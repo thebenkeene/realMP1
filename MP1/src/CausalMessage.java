@@ -29,7 +29,7 @@ public class CausalMessage implements java.io.Serializable {
 		return this.source;
 	}
 	
-	public MetaData getData() {
+	public Data getData() {
 		return this.data;
 	}
 	
