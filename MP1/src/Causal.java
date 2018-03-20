@@ -15,7 +15,7 @@ public class Causal {
     private static ArrayList<Integer> v_times = new ArrayList<Integer>();
     
     // queue to hold back messages for ordering
-    private static HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
+    private static HashMap<Integer, ArrayList<CausalMessage>> holdBackQueue = new HashMap<Integer, ArrayList<CausalMessage>>();
     private final static Object qLock = new Object();
     /**
      * Print the list of processes/sockets in our list
