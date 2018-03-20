@@ -129,7 +129,7 @@ public class Causal {
                             int dest = Integer.parseInt(message.substring(5, 6));
                             int time = v_times.get(clientId-1)+1;
                             System.out.println(time);
-                            Message m = new Message(message.substring(7), time, clientId, list.get(dest));
+                            CausalMessage m = new CausalMessage(message.substring(7), time, clientId, list.get(dest));
                             sendMsg(m);
                         }
                         else if (checkMulticastInput(message)) {
@@ -139,7 +139,7 @@ public class Causal {
                             if (clientId != 1) {
                                 int dest = 1;
                                 int time = v_times.get(clientId-1)+1;
-                                Message m = new Message(msg, time, clientId, list.get(dest));
+                                CausalMessage m = new CausalMessage(msg.substring(7), time, clientId, list.get(dest));
                                 sendMsg(m);
                                 for (int i = 1; i <= list.size(); i++) {
                                     if (i != clientId) {
@@ -439,7 +439,7 @@ public class Causal {
         }
         
         if (deliver) {
-            deliverMessage(msg, msg.getSource(), msg.getData().getSocket());
+            deliverMsg(msg, msg.getSource(), msg.getData().getSocket());
         }
         
     }
