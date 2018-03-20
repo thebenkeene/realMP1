@@ -17,7 +17,7 @@ public class Process {
 	private static HashMap<Integer, Data> list = new HashMap<Integer, Data>();
 
 	// Whether the process has closed yet 
-	private boolean closed = false;
+	private static boolean closed = false;
 	
 	private static HashMap<Integer, ArrayList<	Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
 	private static final Object queueLock = new Object();
@@ -37,7 +37,7 @@ public class Process {
 		scanConfigFile(process);
 		
 		// Get the current process information from id; if not found, return
-		String[] info = list.get(process).getProcessInfo();
+		String[] info = list.get(process).getPInfo();
 		if (info == null)
 			return;
 		
@@ -233,7 +233,7 @@ public class Process {
 	 */
 	public static void sendMessage(Message m) {
 		try {
-			String[] destinationInfo = m.getData().getProcessInfo();
+			String[] destinationInfo = m.getData().getPInfo();
 			int destination = Integer.parseInt(destinationInfo[0]);
 			Data data = list.get(destination);
 			
@@ -275,13 +275,13 @@ public class Process {
 		}
 	}
 
-	/*
+	
 	/**
 	 * Checks whether the message input is a valid unicast input
 	 * A valid input is of the form: send <#> <message>
 	 * @param input
 	 * @return
-	 
+	 */
 	public static boolean checkUnicastInput(String input) {
 		if (input.length() > 6 && input.substring(0, 4).equals("send")) {
 			input = input.substring(5);
@@ -291,14 +291,14 @@ public class Process {
 			return false;
 	}
 
-	*/
-	/*
+	
+	
 	/**
 	 * Checks whether the message input is a valid multicast input
 	 * A valid input is of the form: msend <message>
 	 * @param input
 	 * @return
-	 
+	 */
 	public static boolean checkMulticastInput(String input) {
 		if (input.length() >= 6 && input.substring(0, 5).equals("msend")) {
 			input = input.substring(5);
@@ -307,7 +307,7 @@ public class Process {
 		else 
 			return false;
 	}
-	*/
+	
 	
 	
 	/**
@@ -319,8 +319,8 @@ public class Process {
 		try {
 			ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
 	        Message msg;
-			while (!closed && (message = (Message)inputStream.readObject()) != null) {
-				final Message m = message;
+			while (!closed && (msg = (Message)inputStream.readObject()) != null) {
+				final Message m = msg;
                 // Create a new thread for each message
                 (new Thread() {
                 	@Override
@@ -344,7 +344,7 @@ public class Process {
 	public static void unicastReceive(Message message, Socket socket) {
 		Data data = message.getData();
 		int source = message.getSource();
-		int id = Integer.parseInt(data.getProcessInfo()[0]);
+		int id = Integer.parseInt(data.getPInfo()[0]);
 		
 		if (list.get(source).getSocket() == null)
 			list.get(source).setSocket(socket);
