@@ -18,25 +18,6 @@ public class totalP {
 	private static HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
 	private static final Object queueLock = new Object();
 	
-/*	// printlist of processes/sockets
-	 
-	public void printP() {
-		System.out.println("minDelay: " + minDelay + " maxDelay: " + maxDelay);
-		for (int i = 0; i < list.size(); i++) {
-			Data data = list.get(i+1);
-			if (data != null) {
-				String[] info = data.getPInfo();
-				System.out.println("========================");
-				System.out.println(info[0] + " " + info[1] + " " + info[2]);
-				if (data.isOpen())
-					System.out.println("Socket is open");
-				System.out.println("========================");
-			}
-			else
-				System.out.println(i + " is null!");
-		}
-	}*/
-	
 	//return time as a string (hh:mm:ss)
 
 	public static String getTime() {
@@ -118,6 +99,7 @@ public class totalP {
 		        (new Thread() {
 		            @Override
 		            public void run() {
+		            	//if unicast, send message
 						if (checkUniInput(message)) {
 							int dest = Integer.parseInt(message.substring(5, 6));
 							int time = v_timestamps.get(clientId-1)+1;
@@ -128,7 +110,8 @@ public class totalP {
 						else if (checkMultiInput(message)) {
 							// if another process is multicast, send to leader (process 1)
 							// leader send messages in fifo
-							// from in class algorithm: B-multicast(g,<"order", i, sg>)
+							/*from in class algorithm: To TO-multicast message m to group g
+							B-multicast(g U {sequencer(g)}, <m,i>)*/
 							String msg = message.substring(6);
 							if (clientId != 1) {
 								int dest = 1;
@@ -142,6 +125,7 @@ public class totalP {
 								}
 							}
 							// else process 1 multicast
+							// from in class algorithm: B-multicast(g,<"order", i, sg>)
 							else {
 								multicast(msg, clientId);
 							}
@@ -168,15 +152,6 @@ public class totalP {
 		v_timestamps.set(id-1, time);
 		return time;
 	}
-	
-/*	private void printVTimes(ArrayList<Integer> arr) {
-		synchronized (queueLock) {
-			for (int i = 0; i < arr.size(); i++) {
-				System.out.print(arr.get(i));
-			}
-			System.out.println("");
-		}
-	}*/
 	
 	//if get a message m, set socket and writer for data if 1st time opening
 	//write the numbered object to the writer
@@ -205,8 +180,7 @@ public class totalP {
 		}
 	}
 	//multicast message to every process
-	/*from in class algorithm: To TO-multicast message me to group g
-		B-multicast(g U {sequencer(g)}, <m,i>)*/
+	
 	public static void multicast(String message, int source) {
 		// leader multicast
 		// increment 1st process timestamp
@@ -216,8 +190,11 @@ public class totalP {
 			if (data != null) {
 				Message m = new Message(message, time, source, data);
 				if (source == 1)
+					/*from in class algorithm for sequencer of g: B-multicast(g, <"order", i, sg>)*/
 					sendMsg(m, true);
 				else
+					/*from in class algorithm: To TO-multicast message m to group g
+					B-multicast(g U {sequencer(g)}, <m,i>)*/
 					sendMsg(m, false);
 			}
 		}
@@ -394,13 +371,6 @@ public class totalP {
 			e.printStackTrace();
 		}		
 	}
-
-/*	//check if received message is valid 
-	//invalid if = a string with a colon in it
-	public boolean invalidInput(String input) {
-		int index = input.indexOf(':');
-		return (index != -1 && index >= 0);
-	}*/
 	
 	public static void main(String[] args) throws IOException {
 		if (args.length < 1) {
