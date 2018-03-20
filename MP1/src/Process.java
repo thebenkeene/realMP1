@@ -376,7 +376,7 @@ public class Process {
 	public static void deliverMessage(Message m, int source, Socket s) {
 		String message = m.getMessage();
 		
-		System.out.println("Delivered \"" + message + "\" from process " + source + ", system time is " + getTime());
+		System.out.println("Recieved '" + message + "' from process " + source + ", system time is " + getTime());
 	}
 	
 	/**

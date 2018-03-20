@@ -67,7 +67,7 @@ public class Causal {
     
     //read in from config and gets process info
     public static void scanConfigFile(int id) {
-        File file = new File("../config_file.txt");
+        File file = new File("./config.txt");
         try {
             Scanner scanner = new Scanner(file);
             
@@ -129,9 +129,9 @@ public class Causal {
 		            public void run() {
 						if (checkUnicastInput(message)) {
 							int destination = Integer.parseInt(message.substring(5, 6));
-							ArrayList<Integer> time = v_timestamps;
+							ArrayList<Integer> time = v_times;
 							CausalMessage m = new CausalMessage(message.substring(7), time, clientId, list.get(destination));
-							sendMessage(m);
+							sendMsg(m);
 						}
 						else if (checkMulticastInput(message)) {
 							String msg = message.substring(6);
@@ -272,9 +272,9 @@ public class Causal {
     public static void receiveMsg(final Socket s) {
         try {
             ObjectInputStream in = new ObjectInputStream(s.getInputStream());
-            Message msg;
-            while ((msg = (Message)in.readObject()) != null) {
-                final Message m = msg;
+            CausalMessage msg;
+            while ((msg = (CausalMessage)in.readObject()) != null) {
+                final CausalMessage m = msg;
                 //new thread for each message
                 (new Thread() {
                     @Override
