@@ -18,7 +18,7 @@ public class totalP {
 	private HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
 	private final Object queueLock = new Object();
 	
-	// printlist of processes/sockets
+/*	// printlist of processes/sockets
 	 
 	public void printP() {
 		System.out.println("minDelay: " + minDelay + " maxDelay: " + maxDelay);
@@ -35,7 +35,7 @@ public class totalP {
 			else
 				System.out.println(i + " is null!");
 		}
-	}
+	}*/
 	
 	//return time as a string (hh:mm:ss)
 
@@ -128,6 +128,7 @@ public class totalP {
 						else if (checkMultiInput(message)) {
 							// if another process is multicast, send to leader (process 1)
 							// leader send messages in fifo
+							// from in class algorithm: B-multicast(g,<"order", i, sg>)
 							String msg = message.substring(6);
 							if (clientId != 1) {
 								int dest = 1;
@@ -136,7 +137,7 @@ public class totalP {
 								sendMsg(m, false);
 								for (int i = 1; i <= list.size(); i++) {
 									if (i != clientId) {
-										System.out.println("Sent " + m.getMessage() + " to process " + i + ", system time is " + getTime());
+										System.out.println("Sent " + m.getMsg() + " to process " + i + ", system time is " + getTime());
 									}
 								}
 							}
@@ -161,21 +162,21 @@ public class totalP {
 	}
 	
 	// increment timestamp of process ID
-
+	//from in class algorithm: sg:=sg+1
 	private int incTimestamp(int id) {
 		int time = v_timestamps.get(id-1)+1;
 		v_timestamps.set(id-1, time);
 		return time;
 	}
 	
-	private void printVTimes(ArrayList<Integer> arr) {
+/*	private void printVTimes(ArrayList<Integer> arr) {
 		synchronized (queueLock) {
 			for (int i = 0; i < arr.size(); i++) {
 				System.out.print(arr.get(i));
 			}
 			System.out.println("");
 		}
-	}
+	}*/
 	
 	//if get a message m, set socket and writer for data if 1st time opening
 	//write the numbered object to the writer
@@ -184,33 +185,28 @@ public class totalP {
 			String[] destInfo = m.getData().getPInfo();
 			int dest = Integer.parseInt(destInfo[0]);
 			Data data = list.get(dest);
-			
 			if (!data.isOpen()) {
 				Socket s = new Socket(destInfo[1], Integer.parseInt(destInfo[2]));
 				data.setSocket(s);
 				data.setWriter(new ObjectOutputStream(data.getSocket().getOutputStream()));
 				data.setOpen(true);
 			}
-			
 			if (data.getWriter() == null) {
 				System.out.println("Data writer is null");
 			}
-			
 			data.getWriter().reset();
 			data.getWriter().writeObject(m);
 			data.getWriter().flush();
-			
-			
 			if (print)
-				System.out.println("Sent " + m.getMessage() + " to process " + dest  + ", system time is " + getTime());
+				System.out.println("Sent " + m.getMsg() + " to process " + dest  + ", system time is " + getTime());
 		} catch (IOException e) {
 			System.err.println("ERROR:");
 			e.printStackTrace();
 		}
 	}
-
 	//multicast message to every process
-
+	/*from in class algorithm: To TO-multicast message me to group g
+		B-multicast(g U {sequencer(g)}, <m,i>)*/
 	public void multicast(String message, int source) {
 		// leader multicast
 		// increment 1st process timestamp
@@ -228,7 +224,7 @@ public class totalP {
 		if (source == 1)
 			System.out.println("Delivered \"" + message + "\" from process " + source + ", system time is " + getTime());
 	}
-
+/*
 	//check if message input is valid (send <#> <message>)
 
 	public boolean checkUniInput(String input) {
@@ -249,7 +245,7 @@ public class totalP {
 		}
 		else 
 			return false;
-	}
+	}*/
 
 	//start server in a new thread and loop until every process connected
 
@@ -317,14 +313,15 @@ public class totalP {
 	}
 	
 	//delay message and put elements in holdback queue 
+	//from in class algorithm: Place <m,i> in hold-back queue
 	public boolean delayMsg(Message m, int id) {
 		// sleep for random time for delay
-		sleepRTime();
+		sleepTime();
 		// if leader just received message, deliver message and multicast
 		if (id == 1) {
 			return true;
 		}
-		System.out.println("Recieved message: " + m.getMessage());
+		System.out.println("Received message: " + m.getMsg());
 		int v_time = v_timestamps.get(0);
 		int mesgTime = m.getTimestamp();	
 		//for unicast
@@ -332,10 +329,12 @@ public class totalP {
 			return true;
 		}
 		// if correct time, deliver
+		//from in class algorithm: wait until <m,i> in hold-back queue and S=rg
 		if (mesgTime == v_time + 1) {
 			return true;
 		}
 		// or add to queue
+		//from in class algorithm: Place <m,i> in hold-back queue
 		else if (mesgTime > (v_time + 1)){
 			synchronized (queueLock) {
 				holdBackQueue.get(1).add(m);
@@ -349,13 +348,13 @@ public class totalP {
 	//check holdback queue for new messages
 
 	public void deliverMsg(Message m, int source, Socket s, int id) {
-		String message = m.getMessage();
+		String message = m.getMsg();
 		if (id != 1) {
 			v_timestamps.set(0, m.getTimestamp());
 		}
 		System.out.println("Delivered \"" + message + "\" from process " + m.getSource() + ", system time is " + getTime());
 		if (id == 1)
-			multicast(m.getMessage(), m.getSource());	
+			multicast(m.getMsg(), m.getSource());	
 		checkHQueue(source, id);
 	}
 	
@@ -379,13 +378,14 @@ public class totalP {
 				}
 			}
 		}
+		//from in class algorithm: TO-deliver m
 		if (deliver) {
 			deliverMsg(msg, source, msg.getData().getSocket(), id);
 		}
 	}
 	
 	//sleep thread for random time bounded delays
-	public void sleepRTime() {
+	public void sleepTime() {
 		int random = minDelay + (int)(Math.random() * (maxDelay - minDelay + 1));
 		
 		try {
@@ -395,12 +395,12 @@ public class totalP {
 		}		
 	}
 
-	//check if received message is valid 
+/*	//check if received message is valid 
 	//invalid if = a string with a colon in it
 	public boolean invalidInput(String input) {
 		int index = input.indexOf(':');
 		return (index != -1 && index >= 0);
-	}
+	}*/
 	
 	public void main(String[] args) throws IOException {
 		if (args.length < 1) {
