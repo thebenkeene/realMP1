@@ -4,9 +4,9 @@ public class CausalMessage implements java.io.Serializable {
 	private ArrayList<Integer> timestamp;
 	private String message;
 	private int source;
-	private MetaData data;
+	private Data data;
 	
-	public CausalMessage(String msg, ArrayList<Integer> time, int source, MetaData data) {
+	public CausalMessage(String msg, ArrayList<Integer> time, int source, Data data) {
 		this.timestamp = time;
 		message = msg;
 		this.source = source;
@@ -29,11 +29,11 @@ public class CausalMessage implements java.io.Serializable {
 		return this.source;
 	}
 	
-	public MetaData getMetaData() {
+	public MetaData getData() {
 		return this.data;
 	}
 	
-	public void setMetaData(MetaData d) {
+	public void setData(Data d) {
 		this.data = d;
 	}
 }
