@@ -117,56 +117,40 @@ public class Causal {
     //read messages in and sends to process
     public static void readAndSendMsg(int id) {
         try {
-            BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
-            String input;
-            while ((input = stdIn.readLine()) != null) {
-                final String message = input;
-                final int clientId = id;
-                (new Thread() {
-                    @Override
-                    public void run() {
-                        if (checkUnicastInput(message)) {
-                            int dest = Integer.parseInt(message.substring(5, 6));
-                            int time = v_times.get(clientId-1)+1;
-                            System.out.println(time);
-                            CausalMessage m = new CausalMessage(message.substring(7), time, clientId, list.get(dest));
-                            sendMsg(m);
-                        }
-                        else if (checkMulticastInput(message)) {
-                            // if another process is multicast, send to leader (process 1)
-                            // leader send messages in fifo
-                            String msg = message.substring(6);
-                            if (clientId != 1) {
-                                int dest = 1;
-                                int time = v_times.get(clientId-1)+1;
-                                CausalMessage m = new CausalMessage(msg.substring(7), time, clientId, list.get(dest));
-                                sendMsg(m);
-                                for (int i = 1; i <= list.size(); i++) {
-                                    if (i != clientId) {
-                                        System.out.println("Sent " + m.getMessage() + " to process " + i + ", system time is " + getTime());
-                                    }
-                                }
-                            }
-                            // else process 1 multicast
-                            else {
-                                multicast(msg, clientId);
-                            }
-                        }
-                        else if (!message.isEmpty()) {
-                            System.err.println("msend <message>");
-                        }
-                    }
-                }).start();
-            }
-            System.err.println("Closing client " + id);
-            stdIn.close();
-        } catch (NumberFormatException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
+    		BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
+        	String input;
+//        	boolean exit = false;
+			while ((input = stdIn.readLine()) != null) {
+//				/*
+				final String message = input;
+				final int clientId = id;
+		        (new Thread() {
+		            @Override
+		            public void run() {
+						if (checkUnicastInput(message)) {
+							int destination = Integer.parseInt(message.substring(5, 6));
+							ArrayList<Integer> time = v_timestamps;
+							CausalMessage m = new CausalMessage(message.substring(7), time, clientId, list.get(destination));
+							sendMessage(m);
+						}
+						else if (checkMulticastInput(message)) {
+							String msg = message.substring(6);
+							multicast(msg, clientId);
+						}
+						else if (!message.isEmpty()) {
+							System.err.println("msend <message>");
+						}
+		            }
+		        }).start();
+			}
+			System.err.println("Closing client " + id);
+			stdIn.close();
+		} catch (NumberFormatException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
     
     // increment timestamp of process ID
     
