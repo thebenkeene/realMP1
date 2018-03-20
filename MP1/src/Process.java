@@ -10,13 +10,11 @@ import java.util.*;
  */
 public class Process {
 
-	// Min and max delays for the delay
 	private static int minDelay;
 	private static int maxDelay;
-	// A mapping of processId's to their corresponding Data information
+
 	private static HashMap<Integer, Data> list = new HashMap<Integer, Data>();
 
-	// Whether the process has closed yet 
 	private static boolean closed = false;
 	
 	private static HashMap<Integer, ArrayList<	Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
