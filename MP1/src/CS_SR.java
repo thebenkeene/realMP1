@@ -5,11 +5,13 @@ import java.util.*;
 public class SocketTest {
 	private String min_delay;
 	private String max_delay;
+	private SocketManager socketManager;
 		
     public static void main(String[] args) throws IOException {
         
         startServer();
         startSender();
+        socketManager = new SocketManager();
         
         //loop
         Scanner scanner = new Scanner(args);
@@ -28,9 +30,9 @@ public class SocketTest {
         	String ip = token[1];
         	String port = token[2];
         	
-        	//create new object with info
+        	Socket socket = new Socket();
         	
-        	//to do
+        	socketmanager.add(socket);
         }
     }
     
