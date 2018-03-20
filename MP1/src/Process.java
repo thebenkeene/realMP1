@@ -8,7 +8,7 @@ import java.util.*;
  * MP1: Sara Roth, Courtney Severance, R. Sinclair Jones, and Ben Keene
  *
  */
-public class BasicProcess {
+public class Process {
 
 	// Min and max delays for the delay
 	private int minDelay;
@@ -160,7 +160,7 @@ public class BasicProcess {
     		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
         	String input;
 //        	boolean exit = false;
-			while ((input = stdIn.readLine()) != null) {
+			while ((input = bufferedReader.readLine()) != null) {
 //				/*
 				final String message = input;
 				final int clientId = id;
@@ -213,12 +213,6 @@ public class BasicProcess {
 		s = line[1].substring(line[1].indexOf("(") + 1);
 		maxDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
 	}
-	
-
-	
-	
-	
-	
 	
 	
 	/*
@@ -318,17 +312,17 @@ public class BasicProcess {
 	 * If first time connecting, gets the socket's info into the MetaData
 	 * @param s
 	 */
-	public static void receiveMessages(final Socket s) {
+	public static void receiveMessages(final Socket socket) {
 		try {
-			ObjectInputStream in = new ObjectInputStream(s.getInputStream());
+			ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
 	        Message msg;
-			while (!closed && (msg = (Message)in.readObject()) != null) {
-				final Message m = msg;
+			while (!closed && (message = (Message)inputStream.readObject()) != null) {
+				final Message m = message;
                 // Create a new thread for each message
                 (new Thread() {
                 	@Override
                 	public void run() {
-                		unicastReceive(m, s);
+                		unicastReceive(m, socket);
                 	}
                 }).start();
 			}
@@ -363,7 +357,7 @@ public class BasicProcess {
 	 */
 	public static boolean delayMessage(Message m, int id) {
 		// Sleep for a random time to simulate network delay
-		sleepRandomTime();
+		sleepTime();
 		
 		System.out.println("Recieved message: " + m.getMessage());
 		
@@ -387,7 +381,7 @@ public class BasicProcess {
 	/**
 	 * Sleeps the current thread for a random amount of time bounded my min and max delay
 	 */
-	public static void sleepRandomTime() {
+	public static void sleepTime() {
 		int random = minDelay + (int)(Math.random() * (maxDelay - minDelay + 1));
 		
 		try {
