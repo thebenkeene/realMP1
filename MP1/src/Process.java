@@ -5,23 +5,154 @@ import java.util.*;
 
 
 /**
- * @author Samir Chaudhry
+ * MP1: Sara Roth, Courtney Severance, R. Sinclair Jones, and Ben Keene
  *
  */
 public class BasicProcess {
 
 	// Min and max delays for the delay
-	private static int minDelay;
-	private static int maxDelay;
+	private int minDelay;
+	private int maxDelay;
 	// A mapping of processId's to their corresponding metadata information
 	private static HashMap<Integer, MetaData> list = new HashMap<Integer, MetaData>();
 
 	// Whether the process has closed yet 
-	private static boolean closed = false;
+	private boolean closed = false;
 	
-	private static HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
+	private HashMap<Integer, ArrayList<	Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
 	private static final Object queueLock = new Object();
 	
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) throws IOException {
+		if (args.length < 1) {
+			System.err.println("./process <id>");
+		}
+		
+		// Get the process ID number
+		int process = Integer.parseInt(args[0]);
+		
+		// Read in the config file
+		scanConfigFile(process);
+		
+		// Get the current process information from id; if not found, return
+		String[] info = list.get(process).getProcessInfo();
+		if (info == null)
+			return;
+		
+		// Get the port of this process
+		int port = Integer.parseInt(info[2]);
+		
+		// Start up the server; start up the clients as they connect
+		startServer(info[1], port);
+		startClient(process, info[1], Integer.parseInt(info[2]));
+	}
+	
+	/**
+	 * Reads in from the config file and gets all the processes' info
+	 * @param id
+	 * @return
+	 */
+	public static void scanConfigFile(int process) {
+		File file = new File("./config.txt");
+		try {
+			Scanner scanner = new Scanner(file);
+			
+			// Get the min and max delay
+			String[] line = scanner.nextLine().split(" ");
+			getMinMaxDelay(line);
+
+			// Scan through config file adding MetaData to list for every process
+			String input = "";
+			boolean found = false;
+			int num = 1;
+			while (scanner.hasNext()) {
+				// If the current process, set found to true
+				if (num == process) {
+					input = scanner.nextLine();
+					
+					String[] info = input.split(" ");
+					MetaData data = new MetaData(info, null, null, false);
+					list.put(process, data);
+					holdBackQueue.put(id, new ArrayList<Message>());
+					
+					found = true;
+				}
+				else {
+					input = scanner.nextLine();
+					
+					int id = Integer.parseInt(input.substring(0, 1))
+					String[] info = input.split(" ");
+					MetaData data = new MetaData(info, null, null, false);
+					list.put(id, data);
+					holdBackQueue.put(id, new ArrayList<Message>());
+					
+				}
+				num++;
+			}
+			scanner.close();
+			if (!found)
+				System.err.println("Process does not exist!");
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	/**
+	 * Client set up on a new thread
+	 * @param id
+	 * @param serverName
+	 * @param port
+	 */
+	public static void startClient(int id, String server, int port) {
+		System.out.println("On server: " + server + ". With ID: " + id + ". On port: " + port);
+        (new Thread() {
+            @Override
+            public void run() {
+            	readAndSendMessages(id);
+            }
+        }).start();
+	}
+	
+	/**
+	 * Server set up on a new thread
+	 * Loops until every process has been connected to
+	 * @param serverName
+	 * @param port
+	 */
+	public static void startServer(String serverName, int port) {
+        (new Thread() {
+            @Override
+            public void run() {
+                ServerSocket serverSocket;
+                try {
+                    serverSocket = new ServerSocket(port);
+                    
+                    // Keep looping until every MetaData is open
+                    while (!closed) {
+	                    Socket socket = serverSocket.accept();
+	                    
+	                    // Create a new thread for each connection
+	                    (new Thread() {
+	                    	@Override
+	                    	public void run() {
+	                    		receiveMessages(socket);
+	                    	}
+	                    }).start();
+                    }
+                    System.err.println("Server is closing.");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+	}
+	
+	
+
 	/**
 	 * Returns the time as a string formatted as hour:minutes:seconds
 	 * @return
@@ -41,74 +172,10 @@ public class BasicProcess {
 		maxDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
 	}
 	
-	/**
-	 * Given an input string, splits it into a string array and adds it to the global process list
-	 * @param input
-	 */
-	public static void addProcessToList(String input, int id) {
-//		System.out.println("Adding process " + id + " to list: " + input);
-		String[] info = input.split(" ");
-		MetaData data = new MetaData(info, null, null, false);
-		list.put(id, data);
-		holdBackQueue.put(id, new ArrayList<Message>());
-	}
-	
-	/**
-	 * Reads in from the config file and gets all the processes' info
-	 * @param id
-	 * @return
-	 */
-	public static void scanConfigFile(int id) {
-		File file = new File("../config_file.txt");
-		try {
-			Scanner scanner = new Scanner(file);
-			
-			// Get the min and max delay
-			String[] line = scanner.nextLine().split(" ");
-			getMinMaxDelay(line);
 
-			// Scan through config file adding MetaData to list for every process
-			String input = "";
-			boolean found = false;
-			int num = 1;
-			while (scanner.hasNext()) {
-				// If the current process, set found to true
-				if (num == id) {
-					input = scanner.nextLine();
-					addProcessToList(input, id);
-					found = true;
-				}
-				else {
-					input = scanner.nextLine();
-					addProcessToList(input, Integer.parseInt(input.substring(0, 1)));
-				}
-				num++;
-			}
-			scanner.close();
-			if (!found)
-				System.err.println("Invalid process ID!");
-			
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-	}
 	
-	/**
-	 * Starts up the client
-	 * @param id
-	 * @param serverName
-	 * @param port
-	 */
-	public static void startClient(final int id, final String serverName, final int port) {
-//		System.out.println("Starting client " + id + " at " + serverName + " on port " + port);
-        (new Thread() {
-            @Override
-            public void run() {
-            	readAndSendMessages(id);
-            }
-        }).start();
-	}
+	
+	
 	
 	/**
 	 * Reads messages in from stdIn and sends them to the correct process
@@ -152,6 +219,7 @@ public class BasicProcess {
 		}
 	}
 	
+	/*
 	private static void printVectorTimes(ArrayList<Integer> arr) {
 		synchronized (queueLock) {
 			for (int i = 0; i < arr.size(); i++) {
@@ -160,6 +228,7 @@ public class BasicProcess {
 			System.out.println("");
 		}
 	}
+	*/
 	
 	/**
 	 * Given a Message m, sets the socket and writer for the metadata if first time opening
@@ -240,39 +309,7 @@ public class BasicProcess {
 			return false;
 	}
 
-	/**
-	 * Starts the server in a new thread
-	 * Loops until every process has been connected to
-	 * @param serverName
-	 * @param port
-	 */
-	public static void startServer(String serverName, final int port) {
-        (new Thread() {
-            @Override
-            public void run() {
-                ServerSocket ss;
-                try {
-                    ss = new ServerSocket(port);
-                    
-                    // Keep looping until every MetaData is open
-                    while (!closed) {
-	                    final Socket s = ss.accept();
-	                    
-	                    // Create a new thread for each connection
-	                    (new Thread() {
-	                    	@Override
-	                    	public void run() {
-	                    		receiveMessages(s);
-	                    	}
-	                    }).start();
-                    }
-                    System.err.println("Server is closing.");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }).start();
-	}
+	
 	
 	/**
 	 * Once a client connects to the server, keep reading messages from the client
@@ -358,30 +395,5 @@ public class BasicProcess {
 		}		
 	}
 	
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) throws IOException {
-		if (args.length < 1) {
-			System.err.println("./process <id>");
-		}
-		
-		// Get the process ID number
-		int id = Integer.parseInt(args[0]);
-		
-		// Read in the config file
-		scanConfigFile(id);
-		
-		// Get the current process information from id; if not found, return
-		String[] info = list.get(id).getProcessInfo();
-		if (info == null)
-			return;
-		
-		// Get the port of this process
-		int port = Integer.parseInt(info[2]);
-		
-		// Start up the server; start up the clients as they connect
-		startServer(info[1], port);
-		startClient(id, info[1], Integer.parseInt(info[2]));
-	}
+	
 }
