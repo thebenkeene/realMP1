@@ -11,15 +11,15 @@ import java.util.*;
 public class Process {
 
 	// Min and max delays for the delay
-	private int minDelay;
-	private int maxDelay;
-	// A mapping of processId's to their corresponding metadata information
-	private static HashMap<Integer, MetaData> list = new HashMap<Integer, MetaData>();
+	private static int minDelay;
+	private static int maxDelay;
+	// A mapping of processId's to their corresponding Data information
+	private static HashMap<Integer, Data> list = new HashMap<Integer, Data>();
 
 	// Whether the process has closed yet 
 	private boolean closed = false;
 	
-	private HashMap<Integer, ArrayList<	Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
+	private static HashMap<Integer, ArrayList<	Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
 	private static final Object queueLock = new Object();
 	
 	/**
@@ -63,7 +63,7 @@ public class Process {
 			String[] line = scanner.nextLine().split(" ");
 			getMinMaxDelay(line);
 
-			// Scan through config file adding MetaData to list for every process
+			// Scan through config file adding Data to list for every process
 			String input = "";
 			boolean found = false;
 			int num = 1;
@@ -73,7 +73,7 @@ public class Process {
 					input = scanner.nextLine();
 					
 					String[] info = input.split(" ");
-					MetaData data = new MetaData(info, null, null, false);
+					Data data = new Data(info, null, null, false);
 					list.put(process, data);
 					holdBackQueue.put(process, new ArrayList<Message>());
 					
@@ -82,9 +82,9 @@ public class Process {
 				else {
 					input = scanner.nextLine();
 					
-					int id = Integer.parseInt(input.substring(0, 1))
+					int id = Integer.parseInt(input.substring(0, 1));
 					String[] info = input.split(" ");
-					MetaData data = new MetaData(info, null, null, false);
+					Data data = new Data(info, null, null, false);
 					list.put(id, data);
 					holdBackQueue.put(id, new ArrayList<Message>());
 					
@@ -185,7 +185,7 @@ public class Process {
 		        }).start();
 			}
 			System.err.println("Closing client " + id);
-			stdIn.close();
+			bufferedReader.close();
 		} catch (NumberFormatException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -227,15 +227,15 @@ public class Process {
 	*/
 	
 	/**
-	 * Given a Message m, sets the socket and writer for the metadata if first time opening
+	 * Given a Message m, sets the socket and writer for the Data if first time opening
 	 * Writes the seralized object to the writer
 	 * @param m
 	 */
 	public static void sendMessage(Message m) {
 		try {
-			String[] destinationInfo = m.getMetaData().getProcessInfo();
+			String[] destinationInfo = m.getData().getProcessInfo();
 			int destination = Integer.parseInt(destinationInfo[0]);
-			MetaData data = list.get(destination);
+			Data data = list.get(destination);
 			
 			if (!data.isOpen()) {
 				Socket s = new Socket(destinationInfo[1], Integer.parseInt(destinationInfo[2]));
@@ -267,7 +267,7 @@ public class Process {
 	 */
 	public static void multicast(String message, int source) {
 		for (int i = 0; i < list.size(); i++) {
-			MetaData data = list.get(i+1);
+			Data data = list.get(i+1);
 			if (data != null && source != (i+1)) {
 				Message m = new Message(message, 1, source, data);
 				sendMessage(m);
@@ -275,12 +275,13 @@ public class Process {
 		}
 	}
 
+	/*
 	/**
 	 * Checks whether the message input is a valid unicast input
 	 * A valid input is of the form: send <#> <message>
 	 * @param input
 	 * @return
-	 */
+	 
 	public static boolean checkUnicastInput(String input) {
 		if (input.length() > 6 && input.substring(0, 4).equals("send")) {
 			input = input.substring(5);
@@ -289,13 +290,15 @@ public class Process {
 		else 
 			return false;
 	}
-	
+
+	*/
+	/*
 	/**
 	 * Checks whether the message input is a valid multicast input
 	 * A valid input is of the form: msend <message>
 	 * @param input
 	 * @return
-	 */
+	 
 	public static boolean checkMulticastInput(String input) {
 		if (input.length() >= 6 && input.substring(0, 5).equals("msend")) {
 			input = input.substring(5);
@@ -304,12 +307,12 @@ public class Process {
 		else 
 			return false;
 	}
-
+	*/
 	
 	
 	/**
 	 * Once a client connects to the server, keep reading messages from the client
-	 * If first time connecting, gets the socket's info into the MetaData
+	 * If first time connecting, gets the socket's info into the Data
 	 * @param s
 	 */
 	public static void receiveMessages(final Socket socket) {
@@ -338,16 +341,16 @@ public class Process {
 	 * @param source
 	 * @param message
 	 */
-	public static void unicastReceive(Message m, Socket s) {
-		MetaData data = m.getMetaData();
-		int source = m.getSource();
+	public static void unicastReceive(Message message, Socket socket) {
+		Data data = message.getData();
+		int source = message.getSource();
 		int id = Integer.parseInt(data.getProcessInfo()[0]);
 		
 		if (list.get(source).getSocket() == null)
-			list.get(source).setSocket(s);
+			list.get(source).setSocket(socket);
 		
-		if (delayMessage(m, id)) {
-			deliverMessage(m, source, s);
+		if (delayMessage(message, id)) {
+			deliverMessage(message, source, socket);
 		}	
 	}
 	

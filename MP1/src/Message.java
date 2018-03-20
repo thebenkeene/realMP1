@@ -1,8 +1,15 @@
+/**
+*
+* Message Class
+*
+**/
+
+
 public class Message implements java.io.Serializable {
     private int timestamp;
     private String message;
     private int source;
-    private MetaData data;
+    private Data data;
     
     public Message(int time, String message, int id) {
         this.timestamp = time;
@@ -11,7 +18,7 @@ public class Message implements java.io.Serializable {
         data = null;
     }
     
-    public Message(String message, int time, int source, MetaData data) {
+    public Message(String message, int time, int source, Data data) {
         this.timestamp = time;
         this.message = message;
         this.source = source;
@@ -30,11 +37,11 @@ public class Message implements java.io.Serializable {
         return this.source;
     }
     
-    public MetaData getMetaData() {
+    public Data getData() {
         return this.data;
     }
     
-    public void setMetaData(MetaData d) {
+    public void setData(Data d) {
         this.data = d;
     }
 }
