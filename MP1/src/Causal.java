@@ -3,23 +3,20 @@ import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-/**
- * @author Samir Chaudhry
- *
- */
-public class CausalProcess {
-    private static int minDelay;
-    private static int maxDelay;
+
+public class Causal {
+   	//delays
+    private int minDelay;
+    private int maxDelay;
+    // map to data
+    private HashMap<Integer, Data> list = new HashMap<Integer, Data>();
     
-    private HashMap<Integer, Data> list = new HashMap<Integer, Data>();//holds process data info
+    // vector timestamp for total ordering
+    private ArrayList<Integer> v_timestamps = new ArrayList<Integer>();
     
-    
-    private ArrayList<Integer> v_times = new ArrayList<Integer>();//get time
-    
-    
-    private HashMap<Integer, ArrayList<CausalMessage>> holdBackQueue = new HashMap<Integer, ArrayList CausalMessage>>();//queue to hold messages and ensure Causal ordering
-    private final Object qLock = new Object();
-    
+    // queue to hold back messages for ordering
+    private HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
+    private final Object queueLock = new Object();
     /**
      * Print the list of processes/sockets in our list
      
@@ -44,52 +41,53 @@ public class CausalProcess {
     
 
      */
-    public String getTime() { //gets time for message
+    //return time as a string (hh:mm:ss)
+    
+    public String getTime() {
         return new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime());
     }
     
+    // delays from config file
     
-    public static void getMinMaxDelay(String[] line) {//incorporates delays from config file
+    public void getDelay(String[] line) {
         String s = line[0].substring(line[0].indexOf("(") + 1);
         minDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
-        
         s = line[1].substring(line[1].indexOf("(") + 1);
         maxDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
     }
     
-   //compare here
-    public static void addProcessToList(String input, int id) {//adding info to global data
+    //gets input string, splits and adds to global process list
+    public void addPtoList(String input, int id) {
         String[] info = input.split(" ");
         Data data = new Data(info, null, null, false);
         list.put(id, data);
-        holdBackQueue.put(id, new ArrayList<CausalMessage>());
-        v_times.add(id-1, 0);
+        holdBackQueue.put(id, new ArrayList<Message>());
+        v_timestamps.add(id-1, 0);
     }
     
-   //compare here
-    public static void scanConfigFile(int id) {
+    //read in from config and gets process info
+    public void scanConfigFile(int id) {
         File file = new File("../config_file.txt");
         try {
             Scanner scanner = new Scanner(file);
             
-            // Get the min and max delay
+            // get delays
             String[] line = scanner.nextLine().split(" ");
-            getMinMaxDelay(line);
+            getDelay(line);
             
-            // Scan through config file adding
-            Data to list for every process
+            // add data to list for each process
             String input = "";
             boolean found = false;
             int num = 1;
             while (scanner.hasNext()) {
                 if (num == id) {
                     input = scanner.nextLine();
-                    addProcessToList(input, id);
+                    addPtoList(input, id);
                     found = true;
                 }
                 else {
                     input = scanner.nextLine();
-                    addProcessToList(input, Integer.parseInt(input.substring(0, 1)));
+                    addPtoList(input, Integer.parseInt(input.substring(0, 1)));
                 }
                 num++;
             }
@@ -103,12 +101,9 @@ public class CausalProcess {
         
     }
     
-    /**
-     * Starts up the client
-     * @param id
-     * @param serverName
-     * @param port
-     */
+    
+     // Starts up the client
+  
     public static void startClient(final int id, final String serverName, final int port) {
         //		System.out.println("Starting client " + id + " at " + serverName + " on port " + port);
         (new Thread() {
@@ -119,31 +114,43 @@ public class CausalProcess {
         }).start();
     }
     
-    /**
-     * Reads messages in from stdIn and sends them to the correct process
-     * @param id
-     */
-    public static void readAndSendMessages(int id) {
+    //read messages in and sends to process
+    public void readAndSendMsg(int id) {
         try {
             BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
             String input;
-            //        	boolean exit = false;
             while ((input = stdIn.readLine()) != null) {
-                //				/*
                 final String message = input;
                 final int clientId = id;
                 (new Thread() {
                     @Override
                     public void run() {
-                        if (checkUnicastInput(message)) {
-                            int destination = Integer.parseInt(message.substring(5, 6));
-                            ArrayList<Integer> time = v_times;
-                            CausalMessage m = new CausalMessage(message.substring(7), time, clientId, list.get(destination));
-                            sendMessage(m);
+                        if (checkUniInput(message)) {
+                            int dest = Integer.parseInt(message.substring(5, 6));
+                            int time = v_timestamps.get(clientId-1)+1;
+                            System.out.println(time);
+                            Message m = new Message(message.substring(7), time, clientId, list.get(dest));
+                            sendMsg(m, true);
                         }
-                        else if (checkMulticastInput(message)) {
+                        else if (checkMultiInput(message)) {
+                            // if another process is multicast, send to leader (process 1)
+                            // leader send messages in fifo
                             String msg = message.substring(6);
-                            multicast(msg, clientId);
+                            if (clientId != 1) {
+                                int dest = 1;
+                                int time = v_timestamps.get(clientId-1)+1;
+                                Message m = new Message(msg, time, clientId, list.get(dest));
+                                sendMsg(m, false);
+                                for (int i = 1; i <= list.size(); i++) {
+                                    if (i != clientId) {
+                                        System.out.println("Sent " + m.getMessage() + " to process " + i + ", system time is " + getTime());
+                                    }
+                                }
+                            }
+                            // else process 1 multicast
+                            else {
+                                multicast(msg, clientId);
+                            }
                         }
                         else if (!message.isEmpty()) {
                             System.err.println("msend <message>");
@@ -159,25 +166,18 @@ public class CausalProcess {
             e.printStackTrace();
         }
     }
+
     
-    /**
-     * Increments the vector timestamp of process ID by one
-     * @param id
-     * @return
-     */
-    private static ArrayList<Integer> incrementTimestamp(int id) {
-        synchronized (qLock) {
-            int time = v_times.get(id-1)+1;
-            v_times.set(id-1, time);
-            //			System.out.println("Printing new timestamp");
-            //			printVectorTimes(v_timestamps);
-            
-            return v_times;
-        }
+    // increment timestamp of process ID
+    
+    private int incTimestamp(int id) {
+        int time = v_timestamps.get(id-1)+1;
+        v_timestamps.set(id-1, time);
+        return time;
     }
     
-    private static void printVectorTimes(ArrayList<Integer> arr) {
-        synchronized (qLock) {
+    private void printVTimes(ArrayList<Integer> arr) {
+        synchronized (queueLock) {
             for (int i = 0; i < arr.size(); i++) {
                 System.out.print(arr.get(i));
             }
@@ -185,19 +185,16 @@ public class CausalProcess {
         }
     }
     
-    /**
-     * Given a Message m, sets the socket and writer for the data if first time opening
-     * Writes the seralized object to the writer
-     * @param m
-     */
-    public static void sendMessage(CausalMessage m) {
+    //if get a message m, set socket and writer for data if 1st time opening
+    //write the numbered object to the writer
+    public void sendMsg(CausalMessage m, boolean print) {
         try {
-            String[] destinationInfo = m.getData().getProcessInfo();
-            int destination = Integer.parseInt(destinationInfo[0]);
-            Data data = list.get(destination);
+            String[] destInfo = m.getData().getPInfo();
+            int dest = Integer.parseInt(destInfo[0]);
+            Data data = list.get(dest);
             
             if (!data.isOpen()) {
-                Socket s = new Socket(destinationInfo[1], Integer.parseInt(destinationInfo[2]));
+                Socket s = new Socket(destInfo[1], Integer.parseInt(destInfo[2]));
                 data.setSocket(s);
                 data.setWriter(new ObjectOutputStream(data.getSocket().getOutputStream()));
                 data.setOpen(true);
@@ -211,18 +208,16 @@ public class CausalProcess {
             data.getWriter().writeObject(m);
             data.getWriter().flush();
             
-            System.out.println("Sent " + m.getMessage() + " to process " + destination  + ", system time is " + getTime());
+            
+            if (print)
+                System.out.println("Sent " + m.getMessage() + " to process " + dest  + ", system time is " + getTime());
         } catch (IOException e) {
             System.err.println("ERROR:");
             e.printStackTrace();
         }
     }
     
-    /**
-     * Multicasts a message to every process
-     * i is the id of each process ID
-     * @param message
-     */
+//multicast to all
     public static void multicast(String message, int source) {
         ArrayList<Integer> times = incrementTimestamp(source);
         for (int i = 0; i < list.size(); i++) {
@@ -239,7 +234,8 @@ public class CausalProcess {
      * A valid input is of the form: send <#> <message>
      * @param input
      * @return
-     */
+     *DELETE
+     //here
     public static boolean checkUnicastInput(String input) {
         if (input.length() > 6 && input.substring(0, 4).equals("send")) {
             input = input.substring(5);
@@ -254,7 +250,7 @@ public class CausalProcess {
      * A valid input is of the form: msend <message>
      * @param input
      * @return
-     */
+     //here
     public static boolean checkMulticastInput(String input) {
         if (input.length() >= 6 && input.substring(0, 5).equals("msend")) {
             input = input.substring(5);
@@ -264,13 +260,11 @@ public class CausalProcess {
             return false;
     }
     
-    /**
-     * Starts the server in a new thread
-     * Loop until every process has been connected to ---- removed for now
-     * @param serverName
-     * @param port
-     */
-    public static void startServer(String serverName, final int port) {
+    **/
+    
+    //start server in a new thread and loop until every process connected
+    
+    public void startServer(String serverName, final int port) {
         (new Thread() {
             @Override
             public void run() {
@@ -278,15 +272,15 @@ public class CausalProcess {
                 try {
                     ss = new ServerSocket(port);
                     
-                    // Keep looping until every Data is open
+                    // loop until all data is open
                     while (true) {
                         final Socket s = ss.accept();
                         
-                        // Create a new thread for each connection
+                        // new thread for each connection
                         (new Thread() {
                             @Override
                             public void run() {
-                                receiveMessages(s);
+                                receiveMsg(s);
                             }
                         }).start();
                     }
@@ -296,22 +290,21 @@ public class CausalProcess {
             }
         }).start();
     }
+
+    //client connects to server, read messages from client
+    // if 1st time connecting, get socket's info into data
     
-    /**
-     * When a client connects, create an input stream and keep reading messages in
-     * @param s
-     */
-    public static void receiveMessages(final Socket s) {
+    public void receiveMsg(final Socket s) {
         try {
             ObjectInputStream in = new ObjectInputStream(s.getInputStream());
-            CausalMessage msg;
-            while (true && (msg = (CausalMessage)in.readObject()) != null) {
-                final CausalMessage m = msg;
-                // Create a new thread for each message
+            Message msg;
+            while ((msg = (Message)in.readObject()) != null) {
+                final Message m = msg;
+                //new thread for each message
                 (new Thread() {
                     @Override
                     public void run() {
-                        unicastReceive(m, s);
+                        uniReceive(m, s);
                     }
                 }).start();
             }
@@ -322,22 +315,16 @@ public class CausalProcess {
         }
     }
     
-    /**
-     * Receives the message, adds delay if necessary, and delivers it if ready
-     * @param source
-     * @param message
-     */
-    public static void unicastReceive(CausalMessage m, Socket s) {
+  //print out message, add delay if needed
+    public void uniReceive(CausalMessage m, Socket s) {
         Data data = m.getData();
         int source = m.getSource();
-        int id = Integer.parseInt(data.getProcessInfo()[0]);
-        
+        int id = Integer.parseInt(data.getPInfo()[0]);
         if (list.get(source).getSocket() == null)
             list.get(source).setSocket(s);
-        
-        if (delayMessage(m, source)) {
-            deliverMessage(m, source, s);
-        }
+        if (delayMsg(m, id)) {
+            deliverMsg(m, source, s, id);
+        }	
     }
     
     /**
@@ -347,7 +334,7 @@ public class CausalProcess {
      */
     public static boolean delayMessage(CausalMessage m, int source) {
         // Sleep for a random time to simulate network delay
-        sleepRandomTime();
+        sleepTime();
         
         // FOR TESTING CAUSAL
         /*
@@ -395,7 +382,7 @@ public class CausalProcess {
             printVectorTimes(v_times);
             printVectorTimes(mesgTimes);
             
-            // If Vj[i] = Vi[i] + 1
+        
             int greater = 0;
             int less = 0;
             if (mesgTime == (v_time + 1)) {
@@ -408,7 +395,7 @@ public class CausalProcess {
                     }
                 }
                 if (greater >= 1 && less >= 1) {
-                    //					System.err.println("Concurrent");
+             
                     return true;
                 }
                 else if (greater == 0) {
@@ -416,38 +403,28 @@ public class CausalProcess {
                 }
             }
             
-            System.out.println("Adding to queue at " + source);
+            //System.out.println("Adding to queue at " + source);
             
             holdBackQueue.get(source).add(m);
             return false;
         }
     }
     
-    /**
-     * Acknowledges delivering of the message, sets its vector timestamp
-     * Gets the socket info if first time receiving info from this process
-     * Checks the holdback queue to see if any new messages can be delivered
-     * @param m
-     * @param source
-     * @param s
-     */
-    public static void deliverMessage(CausalMessage m, int source, Socket s) {
+    //ack that delivered message
+    //get socket info if 1st time getting info from this process
+    //check holdback queue for new messages
+    public static void deliverMsg(CausalMessage m, int source, Socket s) {
         String message = m.getMessage();
         
         v_times.set(source - 1, m.getTimestamp().get(source-1));
         
         System.out.println("Delivered \"" + message + "\" from process " + source + ", system time is " + getTime());
         
-        checkHoldbackQueue(source);
+        checkHQueue(source);
     }
     
-    /**
-     * Scans through the holdback queue to determine whether any messages can be delivered
-     * Determines if a message can be delivered by checkTimeStamps()
-     * If so, it delivers them
-     * @param source
-     */
-    public static void checkHoldbackQueue(int id) {
+   	// check holdback queue for messages to deliver
+    public static void checkHQueue(int id) {
         CausalMessage msg = null;
         boolean deliver = false;
         synchronized (qLock) {
@@ -459,7 +436,7 @@ public class CausalProcess {
                         int v_time = v_times.get(msg.getSource() - 1);
                         System.out.println("Queue: v_time = " + v_time + "; msgTime = " + msg.getTimestamp());
                         
-                        // Deliver this message
+                       
                         if (msg.getTimestamp().get(i) == (v_time + 1) && checkTimeStamps(msg, msg.getSource())) {
                             deliver = true;
                             msgs.remove(j);
@@ -476,10 +453,8 @@ public class CausalProcess {
         
     }
     
-    /**
-     * Sleeps the current thread for a random amount of time bounded my min and max delay
-     */
-    public static void sleepRandomTime() {
+   
+    public static void sleepTime() {
         int random = minDelay + (int)(Math.random() * (maxDelay - minDelay + 1));
         
         try {
@@ -489,9 +464,7 @@ public class CausalProcess {
         }		
     }
     
-    /**
-     * @param args
-     */
+    
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
             System.err.println("./process <id>");
@@ -504,7 +477,7 @@ public class CausalProcess {
         // Read in the config file
         scanConfigFile(id);
         
-        // Get the current process information from id; if not found, return
+        // Get the process info
         String[] info = list.get(id).getProcessInfo();
         if (info == null)
             return;
