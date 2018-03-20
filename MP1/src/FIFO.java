@@ -11,21 +11,21 @@ public class FIFO {
 
     
     //delays
-    private int minDelay;
-    private int maxDelay;
+    private static int minDelay;
+    private static int maxDelay;
     // map to data
-    private HashMap<Integer, Data> list = new HashMap<Integer, Data>();
+    private static HashMap<Integer, Data> list = new HashMap<Integer, Data>();
     
     // vector timestamp for total ordering
-    private ArrayList<Integer> v_timestamps = new ArrayList<Integer>();
+    private static ArrayList<Integer> v_timestamps = new ArrayList<Integer>();
     
     // queue to hold back messages for ordering
-    private HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
-    private final Object queueLock = new Object();
+    private static HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
+    private static final Object queueLock = new Object();
     
     // printlist of processes/sockets
      
-    public void printP() {
+    public static void printP() {
         System.out.println("minDelay: " + minDelay + " maxDelay: " + maxDelay);
         for (int i = 0; i < list.size(); i++) {
             Data data = list.get(i+1);
@@ -44,13 +44,13 @@ public class FIFO {
     
     //return time as a string (hh:mm:ss)
 
-    public String getTime() {
+    public static String getTime() {
         return new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime());
     }
     
     // delays from config file
 
-    public void getDelay(String[] line) {
+    public static void getDelay(String[] line) {
         String s = line[0].substring(line[0].indexOf("(") + 1);
         minDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
         s = line[1].substring(line[1].indexOf("(") + 1);
@@ -58,7 +58,7 @@ public class FIFO {
     }
     
     //gets input string, splits and adds to global process list
-    public void addPtoList(String input, int id) {
+    public static void addPtoList(String input, int id) {
         String[] info = input.split(" ");
         Data data = new Data(info, null, null, false);
         list.put(id, data);
@@ -67,7 +67,7 @@ public class FIFO {
     }
     
     //read in from config and gets process info
-    public void scanConfigFile(int id) {
+    public static void scanConfigFile(int id) {
         File file = new File("../config_file.txt");
         try {
             Scanner scanner = new Scanner(file);
@@ -103,11 +103,11 @@ public class FIFO {
     }
 
     //starts up the client
-    public void startClient(final int id, final String serverName, final int port) {
+    public static void startClient(final int id, final String serverName, final int port) {
         (new Thread() {
             @Override
             public void run() {
-                readAndSendMsg(id);
+                readAndSendMessages(id);
             }
         }).start();
     }
@@ -175,7 +175,7 @@ public class FIFO {
     //write the numbered object to the writer
     public static void sendMessage(Message m) {
         try {
-            String[] destinationInfo = m.getData().getProcessInfo();
+            String[] destinationInfo = m.getData().getPInfo();
             int destination = Integer.parseInt(destinationInfo[0]);
             Data data = list.get(destination);
 
@@ -208,7 +208,7 @@ public class FIFO {
     public static void multicast(String message, int source) {
         // leader multicast
         // increment 1st process timestamp
-        int time = incrementTimestamp(source);
+        int time = incTimestamp(source);
         for (int i = 0; i < list.size(); i++) {
             Data data = list.get(i+1);
             if (data != null && source != (i+1)) {
@@ -256,7 +256,7 @@ public class FIFO {
                         (new Thread() {
                             @Override
                             public void run() {
-                                receiveMessages(s);
+                                receiveMsg(s);
                             }
                         }).start();
                     }
@@ -279,7 +279,7 @@ public class FIFO {
                 (new Thread() {
                     @Override
                     public void run() {
-                        unicastReceive(m, s);
+                        uniReceive(m, s);
                     }
                 }).start();
             }
@@ -294,20 +294,20 @@ public class FIFO {
     public static void uniReceive(Message m, Socket s) {
         Data data = m.getData();
         int source = m.getSource();
-        int id = Integer.parseInt(data.getProcessInfo()[0]);
+        int id = Integer.parseInt(data.getPInfo()[0]);
 
         if (list.get(source).getSocket() == null)
             list.get(source).setSocket(s);
 
-        if (delayMessage(m, id)) {
-            deliverMessage(m, source, s);
+        if (delayMsg(m, id)) {
+            deliverMsg(m, source, s);
         }
     }
 
     //delay message and put elements in holdback queue 
     public static boolean delayMsg(Message m, int id) {
         // sleep for random time for delay
-        sleepRandomTime();
+        sleepRTime();
 
         System.out.println("Recieved message: " + m.getMessage());
 
@@ -363,7 +363,7 @@ public class FIFO {
             for (int i = 0; i < msgs.size(); i++) {
                 msg = msgs.get(i);
                 int v_time = v_timestamps.get(msg.getSource() - 1);
-/
+//
                 // Deliver this message it
                 if (msg.getTimestamp() == v_time + 1) {
                     deliver = true;
@@ -374,7 +374,7 @@ public class FIFO {
         }
 
         if (deliver) {
-            deliverMessage(msg, source, msg.getData().getSocket());
+            deliverMsg(msg, source, msg.getData().getSocket());
         }
 
     }
@@ -410,7 +410,7 @@ public class FIFO {
         scanConfigFile(id);
 
         // get current process info from id or return
-        String[] info = list.get(id).getProcessInfo();
+        String[] info = list.get(id).getPInfo();
         if (info == null)
             return;
 
