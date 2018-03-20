@@ -6,17 +6,17 @@ import java.util.*;
 
 public class Causal {
    	//delays
-    private int minDelay;
-    private int maxDelay;
+    private static int minDelay;
+    private static int maxDelay;
     // map to data
     private static HashMap<Integer, Data> list = new HashMap<Integer, Data>();
     
     // vector timestamp for total ordering
-    private static ArrayList<Integer> v_timestamps = new ArrayList<Integer>();
+    private static ArrayList<Integer> v_times = new ArrayList<Integer>();
     
     // queue to hold back messages for ordering
     private static HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
-    private final static Object queueLock = new Object();
+    private final static Object qLock = new Object();
     /**
      * Print the list of processes/sockets in our list
      
@@ -26,7 +26,7 @@ public class Causal {
         for (int i = 0; i < list.size(); i++) {
             Data data = list.get(i+1);
             if (data != null) {
-                String[] info = data.getProcessInfo();
+                String[] info = data.getPInfo();
                 System.out.println("========================");
                 System.out.println(info[0] + " " + info[1] + " " + info[2]);
                 if (data.isOpen())
@@ -330,7 +330,7 @@ public class Causal {
         // FOR TESTING CAUSAL
         /*
          try {
-         int destination = Integer.parseInt(m.getData().getProcessInfo()[0]);
+         int destination = Integer.parseInt(m.getData().getPInfo()[0]);
          if (source == 1 && destination == 3) {
          System.out.println("Sleeping for 10");
          Thread.sleep(10000);
@@ -469,7 +469,7 @@ public class Causal {
         scanConfigFile(id);
         
         // Get the process info
-        String[] info = list.get(id).getProcessInfo();
+        String[] info = list.get(id).getPInfo();
         if (info == null)
             return;
         
