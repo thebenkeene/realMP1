@@ -68,7 +68,7 @@ public class FIFO {
     
     //read in from config and gets process info
     public static void scanConfigFile(int id) {
-        File file = new File("../config_file.txt");
+        File file = new File("./config.txt");
         try {
             Scanner scanner = new Scanner(file);
             
