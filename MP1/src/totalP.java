@@ -118,14 +118,14 @@ public class totalP {
 		        (new Thread() {
 		            @Override
 		            public void run() {
-						if (checkUniInput(message)) {
+						//if (checkUniInput(message)) {
 							int dest = Integer.parseInt(message.substring(5, 6));
 							int time = v_timestamps.get(clientId-1)+1;
 							System.out.println(time);
 							Message m = new Message(message.substring(7), time, clientId, list.get(dest));
 							sendMsg(m, true);
-						}
-						else if (checkMultiInput(message)) {
+						//}
+						else /*if (checkMultiInput(message))*/ {
 							// if another process is multicast, send to leader (process 1)
 							// leader send messages in fifo
 							// from in class algorithm: B-multicast(g,<"order", i, sg>)
