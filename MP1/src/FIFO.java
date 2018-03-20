@@ -9,29 +9,28 @@ import java.util.*;
 
 public class FIFO {
 
-    // Delay integers
-
-    private static int minDelay;
-    private static int maxDelay;
-    // A mapping of processId's to their corresponding metadata information
-    private static HashMap<Integer, Data> list = new HashMap<Integer, Data>();
-
-    // A vector timestamp for the current process
-    private static ArrayList<Integer> v_timestamps = new ArrayList<Integer>();
-
-    // holdBackQueue that holds the elements to be buffered and a lock for the queue
-    private static HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
-    private static final Object queueLock = new Object();
-
-    /**
-     * Print the list of processes/sockets in our list
-     */
-    public static void printProcesses() {
+    
+    //delays
+    private int minDelay;
+    private int maxDelay;
+    // map to data
+    private HashMap<Integer, Data> list = new HashMap<Integer, Data>();
+    
+    // vector timestamp for total ordering
+    private ArrayList<Integer> v_timestamps = new ArrayList<Integer>();
+    
+    // queue to hold back messages for ordering
+    private HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
+    private final Object queueLock = new Object();
+    
+    // printlist of processes/sockets
+     
+    public void printP() {
         System.out.println("minDelay: " + minDelay + " maxDelay: " + maxDelay);
         for (int i = 0; i < list.size(); i++) {
             Data data = list.get(i+1);
             if (data != null) {
-                String[] info = data.getProcessInfo();
+                String[] info = data.getPInfo();
                 System.out.println("========================");
                 System.out.println(info[0] + " " + info[1] + " " + info[2]);
                 if (data.isOpen())
@@ -42,91 +41,73 @@ public class FIFO {
                 System.out.println(i + " is null!");
         }
     }
+    
+    //return time as a string (hh:mm:ss)
 
-    /**
-     * Returns the time as a string formatted as hour:minutes:seconds
-     * @return
-     */
-    public static String getTime() {
+    public String getTime() {
         return new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime());
     }
+    
+    // delays from config file
 
-    /**
-     * Gets/sets the min and max delay given first line of the config file
-     * @param line
-     */
-    public static void getMinMaxDelay(String[] line) {
+    public void getDelay(String[] line) {
         String s = line[0].substring(line[0].indexOf("(") + 1);
         minDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
         s = line[1].substring(line[1].indexOf("(") + 1);
         maxDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
     }
-
-    /**
-     * Given an input string, splits it into a string array and adds it to the global process list
-     * @param input
-     */
-    public static void addProcessToList(String input, int id) {
-//		System.out.println("Adding process " + id + " to list: " + input);
+    
+    //gets input string, splits and adds to global process list
+    public void addPtoList(String input, int id) {
         String[] info = input.split(" ");
         Data data = new Data(info, null, null, false);
         list.put(id, data);
         holdBackQueue.put(id, new ArrayList<Message>());
         v_timestamps.add(id-1, 0);
     }
-
-    /**
-     * Reads in from the config file and gets all the processes' info
-     * @param id
-     * @return
-     */
-    public static void scanConfigFile(int id) {
+    
+    //read in from config and gets process info
+    public void scanConfigFile(int id) {
         File file = new File("../config_file.txt");
         try {
             Scanner scanner = new Scanner(file);
-
-            // Get the min and max delay
+            
+            // get delays
             String[] line = scanner.nextLine().split(" ");
-            getMinMaxDelay(line);
+            getDelay(line);
 
-            // Scan through config file adding MetaData to list for every process
+            // add data to list for each process
             String input = "";
             boolean found = false;
             int num = 1;
             while (scanner.hasNext()) {
                 if (num == id) {
                     input = scanner.nextLine();
-                    addProcessToList(input, id);
+                    addPtoList(input, id);
                     found = true;
                 }
                 else {
                     input = scanner.nextLine();
-                    addProcessToList(input, Integer.parseInt(input.substring(0, 1)));
+                    addPtoList(input, Integer.parseInt(input.substring(0, 1)));
                 }
                 num++;
             }
             scanner.close();
             if (!found)
                 System.err.println("Invalid process ID!");
-
+            
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        
     }
 
-    /**
-     * Starts up the client
-     * @param id
-     * @param serverName
-     * @param port
-     */
-    public static void startClient(final int id, final String serverName, final int port) {
-//		System.out.println("Starting client " + id + " at " + serverName + " on port " + port);
+    //starts up the client
+    public void startClient(final int id, final String serverName, final int port) {
         (new Thread() {
             @Override
             public void run() {
-                readAndSendMessages(id);
+                readAndSendMsg(id);
             }
         }).start();
     }
@@ -174,18 +155,14 @@ public class FIFO {
         }
     }
 
-    /**
-     * Increments the vector timestamp of process ID by one
-     * @param id
-     * @return
-     */
-    private static int incrementTimestamp(int id) {
+    
+    private static int incTimestamp(int id) {
         int time = v_timestamps.get(id-1)+1;
         v_timestamps.set(id-1, time);
         return time;
     }
 
-    private static void printVectorTimes(ArrayList<Integer> arr) {
+    private static void printVTimes(ArrayList<Integer> arr) {
         synchronized (queueLock) {
             for (int i = 0; i < arr.size(); i++) {
                 System.out.print(arr.get(i));
@@ -194,11 +171,8 @@ public class FIFO {
         }
     }
 
-    /**
-     * Given a Message m, sets the socket and writer for the metadata if first time opening
-     * Writes the seralized object to the writer
-     * @param m
-     */
+    //if get a message m, set socket and writer for data if 1st time opening
+    //write the numbered object to the writer
     public static void sendMessage(Message m) {
         try {
             String[] destinationInfo = m.getData().getProcessInfo();
@@ -230,12 +204,10 @@ public class FIFO {
         }
     }
 
-    /**
-     * Multicasts a message to every process
-     * i is the id of each process ID
-     * @param message
-     */
+        //multicast message to every process
     public static void multicast(String message, int source) {
+        // leader multicast
+        // increment 1st process timestamp
         int time = incrementTimestamp(source);
         for (int i = 0; i < list.size(); i++) {
             Data data = list.get(i+1);
@@ -246,12 +218,8 @@ public class FIFO {
         }
     }
 
-    /**
-     * Checks whether the message input is a valid unicast input
-     * A valid input is of the form: send <#> <message>
-     * @param input
-     * @return
-     */
+    
+    //check if message input is valid (send <#> <message>)
     public static boolean checkUnicastInput(String input) {
         if (input.length() > 6 && input.substring(0, 4).equals("send")) {
             input = input.substring(5);
@@ -261,12 +229,7 @@ public class FIFO {
             return false;
     }
 
-    /**
-     * Checks whether the message input is a valid multicast input
-     * A valid input is of the form: msend <message>
-     * @param input
-     * @return
-     */
+    //checks if message input is valid (msend <message>)
     public static boolean checkMulticastInput(String input) {
         if (input.length() >= 6 && input.substring(0, 5).equals("msend")) {
             input = input.substring(5);
@@ -276,12 +239,7 @@ public class FIFO {
             return false;
     }
 
-    /**
-     * Starts the server in a new thread
-     * Loops until every process has been connected to
-     * @param serverName
-     * @param port
-     */
+    //start server in a new thread and loop until every process connected
     public static void startServer(String serverName, final int port) {
         (new Thread() {
             @Override
@@ -309,18 +267,15 @@ public class FIFO {
         }).start();
     }
 
-    /**
-     * Once a client connects to the server, keep reading messages from the client
-     * If first time connecting, gets the socket's info into the MetaData
-     * @param s
-     */
-    public static void receiveMessages(final Socket s) {
+    //client connects to server, read messages from client
+    // if 1st time connecting, get socket's info into data
+    public static void receiveMsg(final Socket s) {
         try {
             ObjectInputStream in = new ObjectInputStream(s.getInputStream());
             Message msg;
             while ((msg = (Message)in.readObject()) != null) {
                 final Message m = msg;
-                // Create a new thread for each message
+                //new thread for each message
                 (new Thread() {
                     @Override
                     public void run() {
@@ -335,12 +290,8 @@ public class FIFO {
         }
     }
 
-    /**
-     * Prints out the message, implementing a delay if necessary
-     * @param source
-     * @param message
-     */
-    public static void unicastReceive(Message m, Socket s) {
+    //print out message, add delay if needed
+    public static void uniReceive(Message m, Socket s) {
         Data data = m.getData();
         int source = m.getSource();
         int id = Integer.parseInt(data.getProcessInfo()[0]);
@@ -353,51 +304,43 @@ public class FIFO {
         }
     }
 
-    /**
-     * Delays a message: adds in network delay and places elements in holdback queue
-     * @param time
-     */
-    public static boolean delayMessage(Message m, int id) {
-        // Sleep for a random time to simulate network delay
+    //delay message and put elements in holdback queue 
+    public static boolean delayMsg(Message m, int id) {
+        // sleep for random time for delay
         sleepRandomTime();
 
         System.out.println("Recieved message: " + m.getMessage());
 
-//		System.out.println("m-ID = " + m.getSource() + ", source = " + id);
+
         int v_time = v_timestamps.get(m.getSource() - 1);
         int mesgTime = m.getTimestamp();
 
-//		System.out.println("v_time = " + v_time + "; mesgTime = " + mesgTime);
-//		printVectorTimes(v_timestamps);
 
-        // Implemented for unicast
+
+        // For unicast
         if (mesgTime == v_time) {
             return true;
         }
 
-        // If the vector_time has come, deliver the message
+        // If correct time, deliver
         if (mesgTime == v_time + 1) {
             return true;
         }
-        // Else add it to the queue
+        // or add to queue
         else if (mesgTime > (v_time + 1)){
             synchronized (queueLock) {
-//				System.out.println("Adding " + m.getMessage() + " to queue w/ timestamp " + mesgTime);
+
                 holdBackQueue.get(m.getSource()).add(m);
             }
         }
         return false;
     }
 
-    /**
-     * Acknowledges delivering of the message
-     * Gets the socket info if first time receiving info from this process
-     * Checks the holdback queue to see if any new messages can be delivered
-     * @param m
-     * @param source
-     * @param s
-     */
-    public static void deliverMessage(Message m, int source, Socket s) {
+   //ack that delivered message
+    //get socket info if 1st time getting info from this process
+    //check holdback queue for new messages
+
+    public static void deliverMsg(Message m, int source, Socket s) {
         String message = m.getMessage();
 
         v_timestamps.set(m.getSource() - 1, m.getTimestamp());
@@ -407,11 +350,8 @@ public class FIFO {
         checkHoldbackQueue(source);
     }
 
-    /**
-     * Scans through the holdback queue to determine whether any messages can be delivered
-     * If so, it delivers them
-     * @param source
-     */
+   // check holdback queue for messages to deliver
+
     public static void checkHoldbackQueue(int source) {
         Message msg = null;
         boolean deliver = false;
@@ -423,8 +363,8 @@ public class FIFO {
             for (int i = 0; i < msgs.size(); i++) {
                 msg = msgs.get(i);
                 int v_time = v_timestamps.get(msg.getSource() - 1);
-//				System.out.println("Queue: v_time = " + v_time + "; msgTime = " + msg.getTimestamp());
-                // Deliver this message
+/
+                // Deliver this message it
                 if (msg.getTimestamp() == v_time + 1) {
                     deliver = true;
                     msgs.remove(i);
@@ -439,10 +379,8 @@ public class FIFO {
 
     }
 
-    /**
-     * Sleeps the current thread for a random amount of time bounded my min and max delay
-     */
-    public static void sleepRandomTime() {
+    //sleep thread for random time bounded delays
+    public static void sleepRTime() {
         int random = minDelay + (int)(Math.random() * (maxDelay - minDelay + 1));
 
         try {
@@ -452,40 +390,34 @@ public class FIFO {
         }
     }
 
-    /**
-     * Determines whether the received message is a valid input
-     * Invalid input = a string with a colon in it
-     * @param input
-     * @return
-     */
+    //check if received message is valid 
+    //invalid if = a string with a colon in it
     public static boolean invalidInput(String input) {
         int index = input.indexOf(':');
         return (index != -1 && index >= 0);
     }
 
-    /**
-     * @param args
-     */
+    
     public static void main(String[] args) throws IOException {
         if (args.length < 1) {
             System.err.println("./process <id>");
         }
 
-        // Get the process ID number
+        // get the process ID
         int id = Integer.parseInt(args[0]);
 
-        // Read in the config file
+       // get config file
         scanConfigFile(id);
 
-        // Get the current process information from id; if not found, return
+        // get current process info from id or return
         String[] info = list.get(id).getProcessInfo();
         if (info == null)
             return;
 
-        // Get the port of this process
+        // get port of process
         int port = Integer.parseInt(info[2]);
 
-        // Start up the server; start up the clients as they connect
+       // start up server and clients
         startServer(info[1], port);
         startClient(id, info[1], Integer.parseInt(info[2]));
     }
