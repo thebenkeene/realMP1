@@ -9,14 +9,14 @@ public class Causal {
     private int minDelay;
     private int maxDelay;
     // map to data
-    private HashMap<Integer, Data> list = new HashMap<Integer, Data>();
+    private static HashMap<Integer, Data> list = new HashMap<Integer, Data>();
     
     // vector timestamp for total ordering
-    private ArrayList<Integer> v_timestamps = new ArrayList<Integer>();
+    private static ArrayList<Integer> v_timestamps = new ArrayList<Integer>();
     
     // queue to hold back messages for ordering
-    private HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
-    private final Object queueLock = new Object();
+    private static HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
+    private final static Object queueLock = new Object();
     /**
      * Print the list of processes/sockets in our list
      
@@ -43,13 +43,13 @@ public class Causal {
      */
     //return time as a string (hh:mm:ss)
     
-    public String getTime() {
+    public static String getTime() {
         return new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime());
     }
     
     // delays from config file
     
-    public void getDelay(String[] line) {
+    public static void getDelay(String[] line) {
         String s = line[0].substring(line[0].indexOf("(") + 1);
         minDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
         s = line[1].substring(line[1].indexOf("(") + 1);
@@ -57,7 +57,7 @@ public class Causal {
     }
     
     //gets input string, splits and adds to global process list
-    public void addPtoList(String input, int id) {
+    public static void addPtoList(String input, int id) {
         String[] info = input.split(" ");
         Data data = new Data(info, null, null, false);
         list.put(id, data);
@@ -66,7 +66,7 @@ public class Causal {
     }
     
     //read in from config and gets process info
-    public void scanConfigFile(int id) {
+    public static void scanConfigFile(int id) {
         File file = new File("../config_file.txt");
         try {
             Scanner scanner = new Scanner(file);
@@ -115,7 +115,7 @@ public class Causal {
     }
     
     //read messages in and sends to process
-    public void readAndSendMsg(int id) {
+    public static void readAndSendMsg(int id) {
         try {
             BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
             String input;
@@ -170,13 +170,15 @@ public class Causal {
     
     // increment timestamp of process ID
     
-    private int incTimestamp(int id) {
-        int time = v_timestamps.get(id-1)+1;
-        v_timestamps.set(id-1, time);
-        return time;
-    }
+    private static  ArrayList<Integer> incTimestamp(int id) {
+ 		synchronized (queueLock) {
+			int time = v_timestamps.get(id-1)+1;
+			v_timestamps.set(id-1, time);			
+			return v_timestamps;
+		}
+	}
     
-    private void printVTimes(ArrayList<Integer> arr) {
+    private static void printVTimes(ArrayList<Integer> arr) {
         synchronized (queueLock) {
             for (int i = 0; i < arr.size(); i++) {
                 System.out.print(arr.get(i));
@@ -187,7 +189,7 @@ public class Causal {
     
     //if get a message m, set socket and writer for data if 1st time opening
     //write the numbered object to the writer
-    public void sendMsg(CausalMessage m, boolean print) {
+    public static void sendMsg(CausalMessage m, boolean print) {
         try {
             String[] destInfo = m.getData().getPInfo();
             int dest = Integer.parseInt(destInfo[0]);
@@ -253,7 +255,7 @@ public class Causal {
     
     //start server in a new thread and loop until every process connected
     
-    public void startServer(String serverName, final int port) {
+    public static void startServer(String serverName, final int port) {
         (new Thread() {
             @Override
             public void run() {
@@ -283,7 +285,7 @@ public class Causal {
     //client connects to server, read messages from client
     // if 1st time connecting, get socket's info into data
     
-    public void receiveMsg(final Socket s) {
+    public static void receiveMsg(final Socket s) {
         try {
             ObjectInputStream in = new ObjectInputStream(s.getInputStream());
             Message msg;
@@ -305,7 +307,7 @@ public class Causal {
     }
     
   //print out message, add delay if needed
-    public void uniReceive(CausalMessage m, Socket s) {
+    public static void uniReceive(CausalMessage m, Socket s) {
         Data data = m.getData();
         int source = m.getSource();
         int id = Integer.parseInt(data.getPInfo()[0]);
