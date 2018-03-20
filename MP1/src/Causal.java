@@ -229,13 +229,7 @@ public class Causal {
         }
     }
     
-    /**
-     * Checks whether the message input is a valid unicast input
-     * A valid input is of the form: send <#> <message>
-     * @param input
-     * @return
-     *DELETE
-     //here
+ //valid?
     public static boolean checkUnicastInput(String input) {
         if (input.length() > 6 && input.substring(0, 4).equals("send")) {
             input = input.substring(5);
@@ -245,12 +239,7 @@ public class Causal {
             return false;
     }
     
-    /**
-     * Checks whether the message input is a valid multicast input
-     * A valid input is of the form: msend <message>
-     * @param input
-     * @return
-     //here
+    //valid?
     public static boolean checkMulticastInput(String input) {
         if (input.length() >= 6 && input.substring(0, 5).equals("msend")) {
             input = input.substring(5);
@@ -260,7 +249,7 @@ public class Causal {
             return false;
     }
     
-    **/
+    
     
     //start server in a new thread and loop until every process connected
     
