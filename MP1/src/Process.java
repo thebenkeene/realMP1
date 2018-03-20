@@ -75,7 +75,7 @@ public class BasicProcess {
 					String[] info = input.split(" ");
 					MetaData data = new MetaData(info, null, null, false);
 					list.put(process, data);
-					holdBackQueue.put(id, new ArrayList<Message>());
+					holdBackQueue.put(process, new ArrayList<Message>());
 					
 					found = true;
 				}
@@ -103,16 +103,16 @@ public class BasicProcess {
 	
 	/**
 	 * Client set up on a new thread
-	 * @param id
-	 * @param serverName
+	 * @param process
+	 * @param server
 	 * @param port
 	 */
-	public static void startClient(int id, String server, int port) {
-		System.out.println("On server: " + server + ". With ID: " + id + ". On port: " + port);
+	public static void startClient(int process, String server, int port) {
+		System.out.println("On server: " + server + ". With ID: " + process + ". On port: " + port);
         (new Thread() {
             @Override
             public void run() {
-            	readAndSendMessages(id);
+            	readAndSendMessages(process);
             }
         }).start();
 	}
@@ -120,10 +120,10 @@ public class BasicProcess {
 	/**
 	 * Server set up on a new thread
 	 * Loops until every process has been connected to
-	 * @param serverName
+	 * @param server
 	 * @param port
 	 */
-	public static void startServer(String serverName, int port) {
+	public static void startServer(String server, int port) {
         (new Thread() {
             @Override
             public void run() {
@@ -131,7 +131,7 @@ public class BasicProcess {
                 try {
                     serverSocket = new ServerSocket(port);
                     
-                    // Keep looping until every MetaData is open
+                    // Keep looping until everything is open 
                     while (!closed) {
 	                    Socket socket = serverSocket.accept();
 	                    
@@ -150,40 +150,14 @@ public class BasicProcess {
             }
         }).start();
 	}
-	
-	
 
-	/**
-	 * Returns the time as a string formatted as hour:minutes:seconds
-	 * @return
-	 */
-	public static String getTime() {
-		return new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime());
-	}
-	
-	/**
-	 * Gets/sets the min and max delay given first line of the config file
-	 * @param line
-	 */
-	public static void getMinMaxDelay(String[] line) {
-		String s = line[0].substring(line[0].indexOf("(") + 1);
-		minDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
-		s = line[1].substring(line[1].indexOf("(") + 1);
-		maxDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
-	}
-	
-
-	
-	
-	
-	
 	/**
 	 * Reads messages in from stdIn and sends them to the correct process
 	 * @param id
 	 */
 	public static void readAndSendMessages(int id) {
     	try {
-    		BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
+    		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
         	String input;
 //        	boolean exit = false;
 			while ((input = stdIn.readLine()) != null) {
@@ -218,6 +192,34 @@ public class BasicProcess {
 			e.printStackTrace();
 		}
 	}
+	
+	
+
+	/**
+	 * Returns the time as a string formatted as hour:minutes:seconds
+	 * @return
+	 */
+	public static String getTime() {
+		return new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime());
+	}
+	
+	/**
+	 * Gets/sets the min and max delay given first line of the config file
+	 * @param line
+	 */
+	public static void getMinMaxDelay(String[] line) {
+		String s = line[0].substring(line[0].indexOf("(") + 1);
+		minDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
+		s = line[1].substring(line[1].indexOf("(") + 1);
+		maxDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
+	}
+	
+
+	
+	
+	
+	
+	
 	
 	/*
 	private static void printVectorTimes(ArrayList<Integer> arr) {
