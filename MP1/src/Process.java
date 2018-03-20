@@ -6,7 +6,7 @@ import java.util.*;
 
 /**
  * MP1: Sara Roth, Courtney Severance, R. Sinclair Jones, and Ben Keene
- *
+ * This is the first part
  */
 public class Process {
 
