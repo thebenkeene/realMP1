@@ -204,7 +204,9 @@ public class FIFO {
         }
     }
 
-        //multicast message to every process
+
+    //from in class algorithm: If a correct node issues multicast(g,m) and then multicast(g,m’), 
+    // then every correct node that delivers m’ will have already delivered m.
     public static void multicast(String message, int source) {
         // leader multicast
         // increment 1st process timestamp
