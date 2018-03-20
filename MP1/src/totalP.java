@@ -6,17 +6,17 @@ import java.util.*;
 public class totalP {
 
 	//delays
-	private int minDelay;
-	private int maxDelay;
+	private static int minDelay;
+	private static int maxDelay;
 	// map to data
-	private HashMap<Integer, Data> list = new HashMap<Integer, Data>();
+	private static HashMap<Integer, Data> list = new HashMap<Integer, Data>();
 	
 	// vector timestamp for total ordering
-	private ArrayList<Integer> v_timestamps = new ArrayList<Integer>();
+	private static ArrayList<Integer> v_timestamps = new ArrayList<Integer>();
 	
 	// queue to hold back messages for ordering
-	private HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
-	private final Object queueLock = new Object();
+	private static HashMap<Integer, ArrayList<Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
+	private static final Object queueLock = new Object();
 	
 /*	// printlist of processes/sockets
 	 
@@ -39,13 +39,13 @@ public class totalP {
 	
 	//return time as a string (hh:mm:ss)
 
-	public String getTime() {
+	public static String getTime() {
 		return new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime());
 	}
 	
 	// delays from config file
 
-	public void getDelay(String[] line) {
+	public static void getDelay(String[] line) {
 		String s = line[0].substring(line[0].indexOf("(") + 1);
 		minDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
 		s = line[1].substring(line[1].indexOf("(") + 1);
@@ -53,7 +53,7 @@ public class totalP {
 	}
 	
 	//gets input string, splits and adds to global process list
-	public void addPtoList(String input, int id) {
+	public static void addPtoList(String input, int id) {
 		String[] info = input.split(" ");
 		Data data = new Data(info, null, null, false);
 		list.put(id, data);
@@ -62,8 +62,8 @@ public class totalP {
 	}
 	
 	//read in from config and gets process info
-	public void scanConfigFile(int id) {
-		File file = new File("../config_file.txt");
+	public static void scanConfigFile(int id) {
+		File file = new File("../config.txt");
 		try {
 			Scanner scanner = new Scanner(file);
 			
@@ -98,7 +98,7 @@ public class totalP {
 	}
 	
 	//starts up the client
-	public void startClient(final int id, final String serverName, final int port) {
+	public static void startClient(final int id, final String serverName, final int port) {
         (new Thread() {
             @Override
             public void run() {
@@ -108,7 +108,7 @@ public class totalP {
 	}
 	
 	//read messages in and sends to process
-	public void readAndSendMsg(int id) {
+	public static void readAndSendMsg(int id) {
     	try {
     		BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
         	String input;
@@ -118,14 +118,14 @@ public class totalP {
 		        (new Thread() {
 		            @Override
 		            public void run() {
-						//if (checkUniInput(message)) {
+						if (checkUniInput(message)) {
 							int dest = Integer.parseInt(message.substring(5, 6));
 							int time = v_timestamps.get(clientId-1)+1;
 							System.out.println(time);
 							Message m = new Message(message.substring(7), time, clientId, list.get(dest));
 							sendMsg(m, true);
-						//}
-						else /*if (checkMultiInput(message))*/ {
+						}
+						else if (checkMultiInput(message)) {
 							// if another process is multicast, send to leader (process 1)
 							// leader send messages in fifo
 							// from in class algorithm: B-multicast(g,<"order", i, sg>)
@@ -137,7 +137,7 @@ public class totalP {
 								sendMsg(m, false);
 								for (int i = 1; i <= list.size(); i++) {
 									if (i != clientId) {
-										System.out.println("Sent " + m.getMsg() + " to process " + i + ", system time is " + getTime());
+										System.out.println("Sent " + m.getMessage() + " to process " + i + ", system time is " + getTime());
 									}
 								}
 							}
@@ -163,7 +163,7 @@ public class totalP {
 	
 	// increment timestamp of process ID
 	//from in class algorithm: sg:=sg+1
-	private int incTimestamp(int id) {
+	private static int incTimestamp(int id) {
 		int time = v_timestamps.get(id-1)+1;
 		v_timestamps.set(id-1, time);
 		return time;
@@ -180,7 +180,7 @@ public class totalP {
 	
 	//if get a message m, set socket and writer for data if 1st time opening
 	//write the numbered object to the writer
-	public void sendMsg(Message m, boolean print) {
+	public static void sendMsg(Message m, boolean print) {
 		try {
 			String[] destInfo = m.getData().getPInfo();
 			int dest = Integer.parseInt(destInfo[0]);
@@ -198,7 +198,7 @@ public class totalP {
 			data.getWriter().writeObject(m);
 			data.getWriter().flush();
 			if (print)
-				System.out.println("Sent " + m.getMsg() + " to process " + dest  + ", system time is " + getTime());
+				System.out.println("Sent " + m.getMessage() + " to process " + dest  + ", system time is " + getTime());
 		} catch (IOException e) {
 			System.err.println("ERROR:");
 			e.printStackTrace();
@@ -207,7 +207,7 @@ public class totalP {
 	//multicast message to every process
 	/*from in class algorithm: To TO-multicast message me to group g
 		B-multicast(g U {sequencer(g)}, <m,i>)*/
-	public void multicast(String message, int source) {
+	public static void multicast(String message, int source) {
 		// leader multicast
 		// increment 1st process timestamp
 		int time = incTimestamp(1);
@@ -224,10 +224,10 @@ public class totalP {
 		if (source == 1)
 			System.out.println("Delivered \"" + message + "\" from process " + source + ", system time is " + getTime());
 	}
-/*
+
 	//check if message input is valid (send <#> <message>)
 
-	public boolean checkUniInput(String input) {
+	public static boolean checkUniInput(String input) {
 		if (input.length() > 6 && input.substring(0, 4).equals("send")) {
 			input = input.substring(5);
 			return Character.isDigit(input.charAt(0)) && Character.isWhitespace(input.charAt(1));
@@ -238,18 +238,18 @@ public class totalP {
 	
 	//checks if message input is valid (msend <message>)
 
-	public boolean checkMultiInput(String input) {
+	public static boolean checkMultiInput(String input) {
 		if (input.length() >= 6 && input.substring(0, 5).equals("msend")) {
 			input = input.substring(5);
 			return Character.isWhitespace(input.charAt(0));
 		}
 		else 
 			return false;
-	}*/
+	}
 
 	//start server in a new thread and loop until every process connected
 
-	public void startServer(String serverName, final int port) {
+	public static void startServer(String serverName, final int port) {
         (new Thread() {
             @Override
             public void run() {
@@ -279,7 +279,7 @@ public class totalP {
 	//client connects to server, read messages from client
 	// if 1st time connecting, get socket's info into data
 
-	public void receiveMsg(final Socket s) {
+	public static void receiveMsg(final Socket s) {
 		try {
 			ObjectInputStream in = new ObjectInputStream(s.getInputStream());
 	        Message msg;
@@ -301,7 +301,7 @@ public class totalP {
 	}
 
 	//print out message, add delay if needed
-	public void uniReceive(Message m, Socket s) {
+	public static void uniReceive(Message m, Socket s) {
 		Data data = m.getData();
 		int source = m.getSource();
 		int id = Integer.parseInt(data.getPInfo()[0]);	
@@ -314,14 +314,14 @@ public class totalP {
 	
 	//delay message and put elements in holdback queue 
 	//from in class algorithm: Place <m,i> in hold-back queue
-	public boolean delayMsg(Message m, int id) {
+	public static boolean delayMsg(Message m, int id) {
 		// sleep for random time for delay
 		sleepTime();
 		// if leader just received message, deliver message and multicast
 		if (id == 1) {
 			return true;
 		}
-		System.out.println("Received message: " + m.getMsg());
+		System.out.println("Received message: " + m.getMessage());
 		int v_time = v_timestamps.get(0);
 		int mesgTime = m.getTimestamp();	
 		//for unicast
@@ -347,20 +347,20 @@ public class totalP {
 	//get socket info if 1st time getting info from this process
 	//check holdback queue for new messages
 
-	public void deliverMsg(Message m, int source, Socket s, int id) {
-		String message = m.getMsg();
+	public static void deliverMsg(Message m, int source, Socket s, int id) {
+		String message = m.getMessage();
 		if (id != 1) {
 			v_timestamps.set(0, m.getTimestamp());
 		}
 		System.out.println("Delivered \"" + message + "\" from process " + m.getSource() + ", system time is " + getTime());
 		if (id == 1)
-			multicast(m.getMsg(), m.getSource());	
+			multicast(m.getMessage(), m.getSource());	
 		checkHQueue(source, id);
 	}
 	
 	// check holdback queue for messages to deliver
 
-	public void checkHQueue(int source, int id) {
+	public static void checkHQueue(int source, int id) {
 		Message msg = null;
 		boolean deliver = false;
 		synchronized (queueLock) {
@@ -385,7 +385,7 @@ public class totalP {
 	}
 	
 	//sleep thread for random time bounded delays
-	public void sleepTime() {
+	public static void sleepTime() {
 		int random = minDelay + (int)(Math.random() * (maxDelay - minDelay + 1));
 		
 		try {
@@ -402,7 +402,7 @@ public class totalP {
 		return (index != -1 && index >= 0);
 	}*/
 	
-	public void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException {
 		if (args.length < 1) {
 			System.err.println("./process <id>");
 		}
