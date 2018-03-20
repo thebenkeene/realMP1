@@ -61,8 +61,8 @@ public class Causal {
         String[] info = input.split(" ");
         Data data = new Data(info, null, null, false);
         list.put(id, data);
-        holdBackQueue.put(id, new ArrayList<Message>());
-        v_timestamps.add(id-1, 0);
+        holdBackQueue.put(id, new ArrayList<CausalMessage>());
+        v_times.add(id-1, 0);
     }
     
     //read in from config and gets process info
@@ -109,7 +109,7 @@ public class Causal {
         (new Thread() {
             @Override
             public void run() {
-                readAndSendMessages(id);
+                readAndSendMsg(id);
             }
         }).start();
     }
@@ -125,22 +125,22 @@ public class Causal {
                 (new Thread() {
                     @Override
                     public void run() {
-                        if (checkUniInput(message)) {
+                        if (checkUnicastInput(message)) {
                             int dest = Integer.parseInt(message.substring(5, 6));
-                            int time = v_timestamps.get(clientId-1)+1;
+                            int time = v_times.get(clientId-1)+1;
                             System.out.println(time);
                             Message m = new Message(message.substring(7), time, clientId, list.get(dest));
-                            sendMsg(m, true);
+                            sendMsg(m);
                         }
-                        else if (checkMultiInput(message)) {
+                        else if (checkMulticastInput(message)) {
                             // if another process is multicast, send to leader (process 1)
                             // leader send messages in fifo
                             String msg = message.substring(6);
                             if (clientId != 1) {
                                 int dest = 1;
-                                int time = v_timestamps.get(clientId-1)+1;
+                                int time = v_times.get(clientId-1)+1;
                                 Message m = new Message(msg, time, clientId, list.get(dest));
-                                sendMsg(m, false);
+                                sendMsg(m);
                                 for (int i = 1; i <= list.size(); i++) {
                                     if (i != clientId) {
                                         System.out.println("Sent " + m.getMessage() + " to process " + i + ", system time is " + getTime());
@@ -171,15 +171,15 @@ public class Causal {
     // increment timestamp of process ID
     
     private static  ArrayList<Integer> incTimestamp(int id) {
- 		synchronized (queueLock) {
-			int time = v_timestamps.get(id-1)+1;
-			v_timestamps.set(id-1, time);			
-			return v_timestamps;
+ 		synchronized (qLock) {
+			int time = v_times.get(id-1)+1;
+			v_times.set(id-1, time);			
+			return v_times;
 		}
 	}
     
     private static void printVTimes(ArrayList<Integer> arr) {
-        synchronized (queueLock) {
+        synchronized (qLock) {
             for (int i = 0; i < arr.size(); i++) {
                 System.out.print(arr.get(i));
             }
@@ -189,7 +189,7 @@ public class Causal {
     
     //if get a message m, set socket and writer for data if 1st time opening
     //write the numbered object to the writer
-    public static void sendMsg(CausalMessage m, boolean print) {
+    public static void sendMsg(CausalMessage m) {
         try {
             String[] destInfo = m.getData().getPInfo();
             int dest = Integer.parseInt(destInfo[0]);
@@ -211,8 +211,8 @@ public class Causal {
             data.getWriter().flush();
             
             
-            if (print)
-                System.out.println("Sent " + m.getMessage() + " to process " + dest  + ", system time is " + getTime());
+            
+            System.out.println("Sent " + m.getMessage() + " to process " + dest  + ", system time is " + getTime());
         } catch (IOException e) {
             System.err.println("ERROR:");
             e.printStackTrace();
@@ -220,13 +220,13 @@ public class Causal {
     }
     
 //multicast to all
-    public static void multicast(String message, int source) {
-        ArrayList<Integer> times = incrementTimestamp(source);
+    public static void multicast(String m, int source) {
+        ArrayList<Integer> times = incTimestamp(source);
         for (int i = 0; i < list.size(); i++) {
             Data data = list.get(i+1);
             if (data != null && source != (i+1)) {
-                CausalMessage m = new CausalMessage(message, times, source, data);
-                sendMessage(m);
+                CausalMessage message = new CausalMessage(m, times, source, data);
+                sendMsg(message);
             }
         }
     }
@@ -313,8 +313,8 @@ public class Causal {
         int id = Integer.parseInt(data.getPInfo()[0]);
         if (list.get(source).getSocket() == null)
             list.get(source).setSocket(s);
-        if (delayMsg(m, id)) {
-            deliverMsg(m, source, s, id);
+        if (delayMessage(m, id)) {
+            deliverMsg(m, source, s);
         }	
     }
     
@@ -370,8 +370,8 @@ public class Causal {
             int v_time = v_times.get(source - 1);
             int mesgTime = mesgTimes.get(source - 1);
             
-            printVectorTimes(v_times);
-            printVectorTimes(mesgTimes);
+            printVTimes(v_times);
+            printVTimes(mesgTimes);
             
         
             int greater = 0;
