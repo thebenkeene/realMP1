@@ -18,11 +18,11 @@ public class Data implements java.io.Serializable {
         this.open = open;
     }
 
-    public String[] getProcessInfo() {
+    public String[] getPInfo() {
         return this.process;
     }
 
-    public void setProcessInfo(String[] info) {
+    public void setPInfo(String[] info) {
         this.process = info;
     }
 
