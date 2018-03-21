@@ -26,19 +26,16 @@ public class Causal {
     }
     
     
-    /**
-    * Sets the delays from the config.txt file
-    */
+    
+    //Sets the delays from the config.txt file
     public static void getDelay(String[] line) {
         String s = line[0].substring(line[0].indexOf("(") + 1);
         minDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
         s = line[1].substring(line[1].indexOf("(") + 1);
         maxDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
     }
-    
-    /**
-     * Sets the input string given a spefic id and adds it to the process list
-     */
+
+     // Sets the input string given a spefic id and adds it to the process list
     public static void addPtoList(String input, int id) {
         String[] info = input.split(" ");
         Data data = new Data(info, null, null, false);
@@ -47,10 +44,7 @@ public class Causal {
         v_times.add(id-1, 0);
     }
     
-    /**
-     * Scans the config file
-     * Populates the processes
-     */
+//scans the config file
     public static void scanConfigFile(int id) {
         File file = new File("./config.txt");
         try {
@@ -88,9 +82,9 @@ public class Causal {
     }
     
 
-    /**
-     * Stats the client from server with id and port
-     */
+
+     //Starts the client from server with id and port
+ 
     public static void startClient(final int id, final String serverName, final int port) {
         //		System.out.println("Starting client " + id + " at " + serverName + " on port " + port);
         (new Thread() {
@@ -101,9 +95,9 @@ public class Causal {
         }).start();
     }
     
-    /**
-     * Reads message and is sent to process
-     */
+ 
+     //Reads message and is sent to process
+     
     public static void readAndSendMsg(int id) {
         try {
     		BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
@@ -227,7 +221,6 @@ public class Causal {
     
     
     //start server in a new thread and loop until every process connected
-    
     public static void startServer(String serverName, final int port) {
         (new Thread() {
             @Override
@@ -257,7 +250,6 @@ public class Causal {
 
     //client connects to server, read messages from client
     // if 1st time connecting, get socket's info into data
-    
     public static void receiveMsg(final Socket s) {
         try {
             ObjectInputStream in = new ObjectInputStream(s.getInputStream());
@@ -291,10 +283,9 @@ public class Causal {
         }	
     }
     
-    /**
-     * Delays a message: adds in network delay
-     * Calls checkTimeStamps to determine if should be delivered
-     */
+  
+     //Delays a message
+     //Calls checkTimeStamps to see if it should deliver
     public static boolean delayMessage(CausalMessage m, int source) {
         // Sleep for a random time to simulate network delay
         sleepTime();
