@@ -301,15 +301,7 @@ public class Causal {
         return checkTimeStamps(m, source);
     }
     
-    /**
-     * Compares the message M with the process vector time to determine if it should be delivered
-     * If sent from process source, check if V[source] + 1 = mesg[source]
-     * If true, determine if all elements in V are ≥ to elements in mesg
-     * Return true if this holds, false otherwise
-     * @param m
-     * @param source
-     * @return True if should be delivered, false if placed in queue
-     */
+   //compares with vector time to see if it should be delivered
     public static boolean checkTimeStamps(CausalMessage m, int source) {
         ArrayList<Integer> mesgTimes = m.getTimestamp();
         
