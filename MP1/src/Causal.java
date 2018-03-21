@@ -18,9 +18,8 @@ public class Causal {
     private static HashMap<Integer, ArrayList<CausalMessage>> holdBackQueue = new HashMap<Integer, ArrayList<CausalMessage>>();
     private final static Object qLock = new Object();
     
-    /**
-    * Gets the current time
-    **/
+    
+    //Gets the current time
     public static String getTime() {
         return new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime());
     }
