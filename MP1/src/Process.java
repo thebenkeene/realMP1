@@ -5,7 +5,7 @@ import java.util.*;
 
 
 /**
- * MP1: Sara Roth, Courtney Severance, R. Sinclair Jones, and Ben Keene
+ * MP1: Sarah Roth, Courtney Severance, R. Sinclair Jones, and Ben Keene
  * This is the first part
  */
 public class Process {
@@ -20,9 +20,7 @@ public class Process {
 	private static HashMap<Integer, ArrayList<	Message>> holdBackQueue = new HashMap<Integer, ArrayList<Message>>();
 	private static final Object queueLock = new Object();
 	
-	/**
-	 * @param args
-	 */
+	
 	public static void main(String[] args) throws IOException {
 		if (args.length < 1) {
 			System.err.println("./process <id>");
@@ -34,7 +32,7 @@ public class Process {
 		// Read in the config file
 		scanConfigFile(process);
 		
-		// Get the current process information from id; if not found, return
+		// Get the current process information from id (if found)
 		String[] info = list.get(process).getPInfo();
 		if (info == null)
 			return;
@@ -47,11 +45,7 @@ public class Process {
 		startClient(process, info[1], Integer.parseInt(info[2]));
 	}
 	
-	/**
-	 * Reads in from the config file and gets all the processes' info
-	 * @param id
-	 * @return
-	 */
+	//read info from config file
 	public static void scanConfigFile(int process) {
 		File file = new File("./config.txt");
 		try {
@@ -99,12 +93,7 @@ public class Process {
 		
 	}
 	
-	/**
-	 * Client set up on a new thread
-	 * @param process
-	 * @param server
-	 * @param port
-	 */
+	
 	public static void startClient(int process, String server, int port) {
 		System.out.println("On server: " + server + ". With ID: " + process + ". On port: " + port);
         (new Thread() {
@@ -115,12 +104,7 @@ public class Process {
         }).start();
 	}
 	
-	/**
-	 * Server set up on a new thread
-	 * Loops until every process has been connected to
-	 * @param server
-	 * @param port
-	 */
+	//create new thread
 	public static void startServer(String server, int port) {
         (new Thread() {
             @Override
@@ -149,10 +133,7 @@ public class Process {
         }).start();
 	}
 
-	/**
-	 * Reads messages in from stdIn and sends them to the correct process
-	 * @param id
-	 */
+	//reads and processes messages
 	public static void readAndSendMessages(int id) {
     	try {
     		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
@@ -193,42 +174,20 @@ public class Process {
 	
 	
 
-	/**
-	 * Returns the time as a string formatted as hour:minutes:seconds
-	 * @return
-	 */
+	//returns time to print
 	public static String getTime() {
 		return new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime());
 	}
 	
-	/**
-	 * Gets/sets the min and max delay given first line of the config file
-	 * @param line
-	 */
+	//gets min and max delay from config file
 	public static void getMinMaxDelay(String[] line) {
 		String s = line[0].substring(line[0].indexOf("(") + 1);
 		minDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
 		s = line[1].substring(line[1].indexOf("(") + 1);
 		maxDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
 	}
-	
-	
-	/*
-	private static void printVectorTimes(ArrayList<Integer> arr) {
-		synchronized (queueLock) {
-			for (int i = 0; i < arr.size(); i++) {
-				System.out.print(arr.get(i));
-			}
-			System.out.println("");
-		}
-	}
-	*/
-	
-	/**
-	 * Given a Message m, sets the socket and writer for the Data if first time opening
-	 * Writes the seralized object to the writer
-	 * @param m
-	 */
+
+	//sets up socket
 	public static void sendMessage(Message m) {
 		try {
 			String[] destinationInfo = m.getData().getPInfo();
@@ -258,11 +217,7 @@ public class Process {
 		}
 	}
 
-	/**
-	 * Multicasts a message to every process
-	 * i is the id of each process ID
-	 * @param message
-	 */
+	//sends to all processes
 	public static void multicast(String message, int source) {
 		for (int i = 0; i < list.size(); i++) {
 			Data data = list.get(i+1);
@@ -274,12 +229,7 @@ public class Process {
 	}
 
 	
-	/**
-	 * Checks whether the message input is a valid unicast input
-	 * A valid input is of the form: send <#> <message>
-	 * @param input
-	 * @return
-	 */
+	//correct form (send id message)
 	public static boolean checkUnicastInput(String input) {
 		if (input.length() > 6 && input.substring(0, 4).equals("send")) {
 			input = input.substring(5);
@@ -291,12 +241,7 @@ public class Process {
 
 	
 	
-	/**
-	 * Checks whether the message input is a valid multicast input
-	 * A valid input is of the form: msend <message>
-	 * @param input
-	 * @return
-	 */
+	//correct form (msend message)
 	public static boolean checkMulticastInput(String input) {
 		if (input.length() >= 6 && input.substring(0, 5).equals("msend")) {
 			input = input.substring(5);
@@ -308,11 +253,7 @@ public class Process {
 	
 	
 	
-	/**
-	 * Once a client connects to the server, keep reading messages from the client
-	 * If first time connecting, gets the socket's info into the Data
-	 * @param s
-	 */
+	//continue reading messages, if first time get socket
 	public static void receiveMessages(final Socket socket) {
 		try {
 			ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
@@ -334,11 +275,7 @@ public class Process {
 		}
 	}
 
-	/**
-	 * Prints out the message, implementing a delay if necessary
-	 * @param source
-	 * @param message
-	 */
+	
 	public static void unicastReceive(Message message, Socket socket) {
 		Data data = message.getData();
 		int source = message.getSource();
@@ -352,10 +289,7 @@ public class Process {
 		}	
 	}
 	
-	/**
-	 * Delays a message: adds in network delay and places elements in holdback queue 
-	 * @param time
-	 */
+	//delays a message and adds to holdback queue if neccesary
 	public static boolean delayMessage(Message m, int id) {
 		// Sleep for a random time to simulate network delay
 		sleepTime();
@@ -365,23 +299,14 @@ public class Process {
 		return true;
 	}
 	
-	/**
-	 * Acknowledges delivering of the message
-	 * Gets the socket info if first time receiving info from this process
-	 * Checks the holdback queue to see if any new messages can be delivered
-	 * @param m
-	 * @param source
-	 * @param s
-	 */
+	//print message once delivered
 	public static void deliverMessage(Message m, int source, Socket s) {
 		String message = m.getMessage();
 		
 		System.out.println("Recieved '" + message + "' from process " + source + ", system time is " + getTime());
 	}
 	
-	/**
-	 * Sleeps the current thread for a random amount of time bounded my min and max delay
-	 */
+	//sleeps thread (for delay)
 	public static void sleepTime() {
 		int random = minDelay + (int)(Math.random() * (maxDelay - minDelay + 1));
 		
