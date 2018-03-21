@@ -17,38 +17,18 @@ public class Causal {
     // queue to hold back messages for ordering
     private static HashMap<Integer, ArrayList<CausalMessage>> holdBackQueue = new HashMap<Integer, ArrayList<CausalMessage>>();
     private final static Object qLock = new Object();
+    
     /**
-     * Print the list of processes/sockets in our list
-     
-    //here
-    public static void printProcesses() {
-        System.out.println("minDelay: " + minDelay + " maxDelay: " + maxDelay);
-        for (int i = 0; i < list.size(); i++) {
-            Data data = list.get(i+1);
-            if (data != null) {
-                String[] info = data.getPInfo();
-                System.out.println("========================");
-                System.out.println(info[0] + " " + info[1] + " " + info[2]);
-                if (data.isOpen())
-                    System.out.println("Socket is open");
-                System.out.println("========================");
-            }
-            else
-                System.out.println(i + " is null!");
-        }
-    }
-    //here
-    
-
-     */
-    //return time as a string (hh:mm:ss)
-    
+    * Gets the current time
+    **/
     public static String getTime() {
         return new SimpleDateFormat("HH:mm:ss").format(Calendar.getInstance().getTime());
     }
     
-    // delays from config file
     
+    /**
+    * Sets the delays from the config.txt file
+    */
     public static void getDelay(String[] line) {
         String s = line[0].substring(line[0].indexOf("(") + 1);
         minDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
@@ -56,7 +36,9 @@ public class Causal {
         maxDelay = Integer.parseInt(s.substring(0, s.indexOf(")")));
     }
     
-    //gets input string, splits and adds to global process list
+    /**
+     * Sets the input string given a spefic id and adds it to the process list
+     */
     public static void addPtoList(String input, int id) {
         String[] info = input.split(" ");
         Data data = new Data(info, null, null, false);
@@ -65,14 +47,17 @@ public class Causal {
         v_times.add(id-1, 0);
     }
     
-    //read in from config and gets process info
+    /**
+     * Scans the config file
+     * Populates the processes
+     */
     public static void scanConfigFile(int id) {
         File file = new File("./config.txt");
         try {
             Scanner scanner = new Scanner(file);
             
             // get delays
-            String[] line = scanner.nextLine().split(" ");
+            String[] line = scanner.nextLine().split(" ");  //first line is delays
             getDelay(line);
             
             // add data to list for each process
@@ -80,6 +65,7 @@ public class Causal {
             boolean found = false;
             int num = 1;
             while (scanner.hasNext()) {
+                //while there is next line
                 if (num == id) {
                     input = scanner.nextLine();
                     addPtoList(input, id);
@@ -101,9 +87,10 @@ public class Causal {
         
     }
     
-    
-     // Starts up the client
-  
+
+    /**
+     * Stats the client from server with id and port
+     */
     public static void startClient(final int id, final String serverName, final int port) {
         //		System.out.println("Starting client " + id + " at " + serverName + " on port " + port);
         (new Thread() {
@@ -114,7 +101,9 @@ public class Causal {
         }).start();
     }
     
-    //read messages in and sends to process
+    /**
+     * Reads message and is sent to process
+     */
     public static void readAndSendMsg(int id) {
         try {
     		BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
@@ -381,6 +370,7 @@ public class Causal {
             //System.out.println("Adding to queue at " + source);
             
             holdBackQueue.get(source).add(m);
+            checkHQueue(source);
             return false;
         }
     }
@@ -388,14 +378,14 @@ public class Causal {
     //ack that delivered message
     //get socket info if 1st time getting info from this process
     //check holdback queue for new messages
-    public static void deliverMsg(CausalMessage m, int source, Socket s) {
+    public static void deliverMsg(CausalMessage m, int src, Socket s) {
         String message = m.getMessage();
         
-        v_times.set(source - 1, m.getTimestamp().get(source-1));
+        v_times.set(src - 1, m.getTimestamp().get(src-1));
         
-        System.out.println("Delivered \"" + message + "\" from process " + source + ", system time is " + getTime());
+        System.out.println("Delivered \"" + message + "\" from process " + src + ", system time is " + getTime());
         
-        checkHQueue(source);
+        checkHQueue(src);
     }
     
    	// check holdback queue for messages to deliver
@@ -423,6 +413,7 @@ public class Causal {
         }
         
         if (deliver) {
+            System.out.println("I'm here");
             deliverMsg(msg, msg.getSource(), msg.getData().getSocket());
         }
         
