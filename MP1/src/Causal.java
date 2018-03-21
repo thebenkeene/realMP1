@@ -204,7 +204,7 @@ public class Causal {
         }
     }
     
- //valid?
+ //checks if valid
     public static boolean checkUnicastInput(String input) {
         if (input.length() > 6 && input.substring(0, 4).equals("send")) {
             input = input.substring(5);
@@ -214,7 +214,7 @@ public class Causal {
             return false;
     }
     
-    //valid?
+    //checks if valid
     public static boolean checkMulticastInput(String input) {
         if (input.length() >= 6 && input.substring(0, 5).equals("msend")) {
             input = input.substring(5);
@@ -294,36 +294,10 @@ public class Causal {
     /**
      * Delays a message: adds in network delay
      * Calls checkTimeStamps to determine if should be delivered
-     * @param time
      */
     public static boolean delayMessage(CausalMessage m, int source) {
         // Sleep for a random time to simulate network delay
         sleepTime();
-        
-        // FOR TESTING CAUSAL
-        /*
-         try {
-         int destination = Integer.parseInt(m.getData().getPInfo()[0]);
-         if (source == 1 && destination == 3) {
-         System.out.println("Sleeping for 10");
-         Thread.sleep(10000);
-         }
-         else if (source == 1 && destination == 2) {
-         //				System.out.println("Sleeping for 5");
-         //				Thread.sleep(5000);
-         }
-         else if (source == 2 && destination == 3) {
-         System.out.println("Sleeping for 5");
-         Thread.sleep(5000);
-         }
-         } catch (InterruptedException e) {
-         
-         }
-         */
-        
-        
-        //		System.out.println("Recieved message: " + m.getMessage());
-        
         return checkTimeStamps(m, source);
     }
     
